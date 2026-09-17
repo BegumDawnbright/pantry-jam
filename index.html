@@ -66,6 +66,28 @@ body{
 @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 
 .boxes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+/* ---- tutorial coach layer ---- */
+#coach{position:fixed;inset:0;z-index:60;pointer-events:none}
+#coach[hidden]{display:none}
+#coach .veil{position:absolute;inset:0;background:rgba(20,12,8,.55);opacity:0;transition:opacity .25s;
+  -webkit-mask:radial-gradient(circle var(--mr,0px) at var(--mx,50%) var(--my,50%), transparent 98%, #000 100%);
+  mask:radial-gradient(circle var(--mr,0px) at var(--mx,50%) var(--my,50%), transparent 98%, #000 100%)}
+#coach.on .veil{opacity:1}
+#coach .ring{position:absolute;border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 0 3px rgba(227,168,87,.3);
+  transition:left .25s,top .25s,width .25s,height .25s;animation:coachPulse 1.3s ease-in-out infinite}
+@keyframes coachPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.06);opacity:.75}}
+#coach .hand{position:absolute;width:38px;height:38px;margin:-4px 0 0 -6px;transition:left .25s,top .25s;filter:drop-shadow(0 3px 4px rgba(0,0,0,.45))}
+#coach .hand.tapAnim{animation:coachTap 1.3s ease-in-out infinite}
+#coach .hand.swipeAnim{animation:coachSwipe 1.5s ease-in-out infinite}
+@keyframes coachTap{0%,100%{transform:translate(0,0) scale(1)}45%{transform:translate(0,7px) scale(.88)}}
+@keyframes coachSwipe{0%{transform:translate(0,0)}45%{transform:translate(var(--sx,-40px),var(--sy,0px))}55%{transform:translate(var(--sx,-40px),var(--sy,0px))}100%{transform:translate(0,0)}}
+#coach .tip{position:absolute;left:50%;transform:translateX(-50%);max-width:min(340px,86vw);background:var(--linen);color:var(--ink);
+  border-radius:14px;padding:10px 13px;font-weight:700;font-size:.95rem;line-height:1.3;text-align:center;
+  box-shadow:0 6px 0 rgba(0,0,0,.25);pointer-events:auto;transition:top .25s,bottom .25s}
+#coach .tip small{display:block;margin-top:5px;font-weight:600;font-size:.8rem;opacity:.65}
+.tile.tutBlock{animation:tutNo .3s ease}
+@keyframes tutNo{0%,100%{transform:var(--tp,translate(0,0))}25%{filter:brightness(1.6)}75%{filter:brightness(1.6)}}
+
 .col{display:flex;flex-direction:column;align-items:stretch;gap:6px}
 .crate{background:linear-gradient(#c28a55,#a26a3f);border-radius:14px;padding:7px 6px 8px;box-shadow:0 5px 0 var(--wood-dark),inset 0 2px 0 rgba(255,255,255,.3);color:var(--ink);transition:transform .25s, opacity .25s}
 .crate.done{transform:translateY(-14px) scale(.9);opacity:0}
@@ -168,6 +190,12 @@ body{
   <div class="credit">İkonlar: <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (Delapouite, Lorc, Rihlsul), CC BY 3.0</div>
 </div>
 
+<div id="coach" hidden>
+  <div class="veil"></div>
+  <div class="ring"></div>
+  <svg class="hand" viewBox="0 0 24 24" fill="#f3e6c9" stroke="#3a2314" stroke-width="1.4" stroke-linejoin="round"><path d="M9 11V4.6a1.6 1.6 0 0 1 3.2 0V11V8.4a1.5 1.5 0 0 1 3 0V11v-1.1a1.5 1.5 0 0 1 3 0V16a5.5 5.5 0 0 1-5.5 5.5h-1.2a5.3 5.3 0 0 1-4.3-2.2l-2.6-3.7a1.5 1.5 0 0 1 2.2-2l1.9 1.8V11z"/></svg>
+  <div class="tip"></div>
+</div>
 <div class="overlay" id="overlay"><div class="card" id="card"></div></div>
 
 <script>
@@ -188,6 +216,67 @@ const ITEMS = {
 };
 /* ---- Level config: grid size, moves, spawnable base items, noise and box queues per column ---- */
 const LEVELS = [
+{
+ "name": "Eğitim",
+ "tutorial": true,
+ "rows": 5,
+ "cols": 5,
+ "moves": 45,
+ "items": [
+  "beans",
+  "wheat",
+  "milk"
+ ],
+ "noise": 1.0,
+ "board": [
+  [
+   "wheat",
+   "milk",
+   "wheat",
+   "milk",
+   "beans"
+  ],
+  [
+   "milk",
+   "wheat",
+   "milk",
+   "wheat",
+   "milk"
+  ],
+  [
+   "wheat",
+   "milk",
+   "beans",
+   "milk",
+   "wheat"
+  ],
+  [
+   "milk",
+   "wheat",
+   "milk",
+   "beans",
+   "wheat"
+  ],
+  [
+   "wheat",
+   "milk",
+   "beans",
+   "wheat",
+   "milk"
+  ]
+ ],
+ "columns": [
+  [
+   "beans"
+  ],
+  [
+   "espresso"
+  ],
+  [
+   "wheat"
+  ]
+ ]
+},
  {
   "name": "Açılış",
   "rows": 6,
@@ -511,11 +600,11 @@ const LEVELS = [
   ]
  }
 ];
-const BOX_NEED = 3, SLOT_MAX = 5, BOOST_MAX = 5, STOCK_KEY='kahve-stok-v1';
+const BOX_NEED = 3, SLOT_MAX = 5, BOOST_MAX = 5, STOCK_KEY='kahve-stok-v2';
 const TIER2 = Object.keys(ITEMS).filter(k=>ITEMS[k].tier>=2);
 let STOCK = {}; try{ STOCK = JSON.parse(localStorage.getItem(STOCK_KEY)||'{}')||{}; }catch(e){ STOCK={}; }
-let PROG={unlocked:0,stars:{}}; try{ PROG=Object.assign(PROG, JSON.parse(localStorage.getItem('kahve-prog-v1')||'{}')); }catch(e){}
-function saveProg(){ try{ localStorage.setItem('kahve-prog-v1', JSON.stringify(PROG)); }catch(e){} }
+let PROG={unlocked:0,stars:{}}; try{ PROG=Object.assign(PROG, JSON.parse(localStorage.getItem('kahve-prog-v2')||'{}')); }catch(e){}
+function saveProg(){ try{ localStorage.setItem('kahve-prog-v2', JSON.stringify(PROG)); }catch(e){} }
 function saveStock(){ try{ localStorage.setItem(STOCK_KEY, JSON.stringify(STOCK)); }catch(e){} }
 function stockTotal(){ return TIER2.reduce((a,k)=>a+(STOCK[k]||0),0); }
 function renderPantry(){ document.getElementById('pantryIcon').innerHTML=faceHTML('espresso',false); document.getElementById('pantryCount').textContent=stockTotal(); }
@@ -537,7 +626,7 @@ function startLevel(i){
   if(S) S.dead=true; clearTimeout(stepTimer); stepTimer=null; document.querySelectorAll('.fly').forEach(f=>f.remove());
   S = { L, rows:L.rows, cols:L.cols, moves:L.moves, grid:[], tiles:new Map(),
         queues:L.columns.map(q=>q.map(w=>({want:w, filled:[], t:[]}))), slots:[], slotT:[], closing:[null,null,null], busy:false, over:false };
-  document.getElementById('lvlTitle').innerHTML = `Bölüm ${i+1}<small>${L.name}</small>`;
+  document.getElementById('lvlTitle').innerHTML = L.tutorial ? `Eğitim<small>${L.name==='Eğitim'?'nasıl oynanır':L.name}</small>` : `Bölüm ${i}<small>${L.name}</small>`;
   boardEl.innerHTML='';
   layout();
   for(let r=0;r<S.rows;r++){ S.grid.push([]); for(let c=0;c<S.cols;c++){
@@ -545,10 +634,11 @@ function startLevel(i){
     S.grid[r].push(null);
   }}
   for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++){
-    S.grid[r][c] = makeTile(pickSpawn(r,c), r, c);
+    S.grid[r][c] = makeTile(L.board ? L.board[r][c] : pickSpawn(r,c), r, c);
   }
   positionAll(); renderSlots(); renderBoxes(); updateHUD(); renderPantry(); closeOverlay();
-  if(!firstRun) showPrep();
+  if(typeof TUT!=='undefined'){ if(L.tutorial) TUT.arm(); else TUT.stop(); }
+  if(!firstRun && !L.tutorial) showPrep();
 }
 let firstRun=true, PICK={};
 function showPrep(){
@@ -743,6 +833,7 @@ const ARRIVE_MS=360;
 function arriveAttr(t){ const e=performance.now()-(t||0); return e<ARRIVE_MS ? ` class="arrive" style="animation-delay:-${e|0}ms"` : ''; }
 function renderBoxes(enterCol=-1){
   const el=document.getElementById('boxes'); el.innerHTML='';
+  el.style.gridTemplateColumns=`repeat(${S.queues.length},minmax(0,1fr))`;
   S.queues.forEach((q,ci)=>{
     const col=document.createElement('div'); col.className='col'; col.dataset.col=ci;
     const closing=S.closing[ci];
@@ -807,6 +898,7 @@ function drainSlots(){
 /* ---- player actions (never wait for animations) ---- */
 function tap(r,c){
   if(S.busy||S.over||S.moves<=0||S.slots.length>=SLOT_MAX) return; const t=S.grid[r][c]; if(!t) return;
+  if(!TUT.canTap(r,c)) return;
   S.moves--; updateHUD(); SFX.pick();
   const rect=t.el.querySelector('.face').getBoundingClientRect();
   S.grid[r][c]=null; t.el.remove(); S.tiles.delete(t.id);
@@ -822,15 +914,18 @@ function tap(r,c){
   focusCells = gravitySpawn();
   scheduleStep(200);
   checkEnd();
+  TUT.done();
 }
 function swap(r1,c1,r2,c2){
   if(S.busy||S.over||S.moves<=0) return; if(r2<0||c2<0||r2>=S.rows||c2>=S.cols) return;
   const a=S.grid[r1][c1], b=S.grid[r2][c2]; if(!a||!b||a.item===b.item) return;
+  if(!TUT.canSwap(r1,c1,r2,c2)) return;
   S.moves--; updateHUD(); SFX.swap(); mergeChain=0;
   S.grid[r1][c1]=b; S.grid[r2][c2]=a; place(a,r2,c2); place(b,r1,c1);
   focusCells=[[r2,c2],[r1,c1]];
   scheduleStep(170);
   checkEnd();
+  TUT.done();
 }
 
 let drag=null;
@@ -918,7 +1013,7 @@ document.getElementById('restartBtn').onclick=()=>startLevel(levelIndex);
 function showLevels(){
   if(S.busy) return;
   const cells=LEVELS.map((L,i)=>{ const st=PROG.stars[i]||0;
-    return `<button class="lv${i===levelIndex?' cur':''}" data-act="level" data-lv="${i}" ${i>PROG.unlocked?'disabled':''} aria-label="Bölüm ${i+1}">${i+1}<small>${[0,1,2].map(k=>`<svg viewBox="0 0 24 24" class="${k<st?'on':''}"><path d="${STAR_PATH}"/></svg>`).join('')}</small></button>`; }).join('');
+    return `<button class="lv${i===levelIndex?' cur':''}" data-act="level" data-lv="${i}" ${i>PROG.unlocked?'disabled':''} aria-label="${L.tutorial?'Eğitim':'Bölüm '+i}">${L.tutorial?'★':i}<small>${[0,1,2].map(k=>`<svg viewBox="0 0 24 24" class="${k<st?'on':''}"><path d="${STAR_PATH}"/></svg>`).join('')}</small></button>`; }).join('');
   showOverlay(`<h2>Bölümler</h2><div class="levels">${cells}</div><button class="btn" data-act="help">Nasıl oynanır</button><button class="btn alt" data-act="close">Kapat</button>`);
 }
 document.getElementById('lvlTitle').onclick=showLevels;
@@ -931,6 +1026,13 @@ document.getElementById('pantryBtn').onclick=()=>{ if(S.busy||S.over) return;
   const rows=TIER2.map(k=>`<div class="sitem"><span class="ic">${faceHTML(k)}</span><div class="meta"><b>${ITEMS[k].name}</b>${STOCK[k]||0} adet</div></div>`).join('');
   showOverlay(`<h2>Kilerim</h2><div class="stock">${rows}</div><p>Bölüm başlarken bu ürünleri tahtaya ekleyebilirsin.</p><button class="btn" data-act="close">Kapat</button>`); };
 function showHelp(first){
+  if(first===true && !PROG.tutDone){
+    showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Kahve Dükkanı</small></h2></div>
+      <p style="font-weight:700;margin:2px 0 4px">Küçük bir eğitim bölümüyle başlıyoruz.</p>
+      <p style="opacity:.75;margin:0 0 6px">Dokunmayı, sürüklemeyi ve hamle sayısını adım adım göstereceğim. Tüm kuralları istediğin an sol üstteki başlıktan tekrar okuyabilirsin.</p>
+      <button class="btn" data-act="play">Başla</button>`);
+    return;
+  }
   showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Kahve Dükkanı</small></h2></div><ul class="help">
     <li><b>Dokun:</b> ürün, onu isteyen öndeki kutuya gider.</li>
     <li><b>Sürükle:</b> yan yana iki ürünün yerini değiştirir.</li>
@@ -941,6 +1043,98 @@ function showHelp(first){
     <li>Her dokunuş ve yer değiştirme 1 hamle. Hamleler bitmeden tüm kutuları doldur.</li></ul>
     <button class="btn" data-act="${first===true?'play':'close'}">${first===true?'Başla':'Devam et'}</button>`);
 }
+
+/* ---- tutorial coach: forced tap / forced swipe, with moves counter callout ---- */
+const TUT = (()=>{
+  const el = document.getElementById('coach'), ring = el.querySelector('.ring'),
+        hand = el.querySelector('.hand'), tip = el.querySelector('.tip'), veil = el.querySelector('.veil');
+  let steps=[], i=-1, live=false, waiting=false;
+
+  const cellRect = (r,c)=>{ const b=boardEl.getBoundingClientRect();
+    return {left:b.left+c*cell, top:b.top+r*cell, width:cell, height:cell}; };
+  const findItem = it => { for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++) if(S.grid[r][c]?.item===it) return [r,c]; return null; };
+
+  function point(rect, text, sub, gesture, dir){
+    el.hidden=false; el.classList.add('on');
+    const pad = gesture==='info' ? 8 : 4;
+    ring.style.display='block';
+    ring.style.left=(rect.left-pad)+'px'; ring.style.top=(rect.top-pad)+'px';
+    ring.style.width=(rect.width+pad*2)+'px'; ring.style.height=(rect.height+pad*2)+'px';
+    const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+    veil.style.setProperty('--mx',cx+'px'); veil.style.setProperty('--my',cy+'px');
+    veil.style.setProperty('--mr',(Math.max(rect.width,rect.height)/2+pad+6)+'px');
+    if(gesture==='info'){ hand.style.display='none'; }
+    else {
+      hand.style.display='block';
+      hand.style.left=cx+'px'; hand.style.top=cy+'px';
+      hand.className='hand '+(gesture==='swipe'?'swipeAnim':'tapAnim');
+      if(gesture==='swipe'){ hand.style.setProperty('--sx',(dir[1]*cell*0.85)+'px'); hand.style.setProperty('--sy',(dir[0]*cell*0.85)+'px'); }
+    }
+    tip.innerHTML = text + (sub?`<small>${sub}</small>`:'') + (gesture==='info'?'<br><button class="btn" data-tut="next" style="margin-top:9px">Tamam</button>':'');
+    tip.style.top=tip.style.bottom='';
+    if(cy < innerHeight/2) tip.style.top = Math.min(innerHeight-120, rect.top+rect.height+22)+'px';
+    else tip.style.bottom = Math.min(innerHeight-120, innerHeight-rect.top+22)+'px';
+  }
+  function hide(){ el.classList.remove('on'); el.hidden=true; }
+
+  function show(){
+    const st=steps[i]; if(!st){ finish(); return; }
+    if(st.type==='info'){ point(st.rect(), st.tip, st.sub, 'info'); return; }
+    const cellPos = st.cell(); if(!cellPos){ next(); return; }
+    st.at = cellPos;
+    point(cellRect(cellPos[0],cellPos[1]), st.tip, st.sub, st.type==='swipe'?'swipe':'tap', st.dir);
+  }
+  function next(){ i++; if(i>=steps.length){ finish(); return; }
+    waiting=true; hide();
+    const st=steps[i], d=st.wait||0;
+    setTimeout(()=>{ waiting=false; if(live) show(); }, d);
+  }
+  function finish(){ live=false; hide(); PROG.tutDone=true; saveProg(); }
+
+  document.getElementById('coach').addEventListener('click', e=>{
+    if(e.target.closest('[data-tut="next"]')){ SFX.ui(); next(); }
+  });
+  window.addEventListener('resize', ()=>{ if(live && !waiting) show(); });
+
+  const api = {
+    get live(){ return live; },
+    arm(){
+      live=false; hide();
+      steps=[
+        {type:'tap', wait:250, cell:()=>[0,4],
+         tip:'Ürüne <b>dokun</b> — onu isteyen kutuya gider.', sub:'Kahve çekirdeğine dokun'},
+        {type:'swipe', wait:700, cell:()=>[3,3], dir:[0,-1],
+         tip:'<b>Sürükle</b> — yan yana iki ürünün yerini değiştirir.', sub:'Çekirdeği sola sürükle'},
+        {type:'info', wait:1400, rect:()=>{ const p=findItem('espresso'); return p?cellRect(p[0],p[1]):boardEl.getBoundingClientRect(); },
+         tip:'3 aynı ürün yan yana geldi ve <b>espresso</b> oldu.', sub:'Üst ürünler daha değerli'},
+        {type:'tap', wait:150, cell:()=>findItem('espresso'),
+         tip:'Espresso’ya <b>dokun</b> ve kutusuna gönder.'},
+        {type:'info', wait:800, rect:()=>document.getElementById('moves').getBoundingClientRect(),
+         tip:'Her dokunuş ve sürükleme <b>1 hamle</b>. Sayaç burada.', sub:'Hamleler bitmeden kutuları doldur'}
+      ];
+      i=-1;
+      const go=()=>{ if(overlay.classList.contains('show')){ setTimeout(go,200); return; } live=true; next(); };
+      setTimeout(go,300);
+    },
+    stop(){ live=false; hide(); },
+    /* gate: during a forced step only the highlighted move is accepted */
+    canTap(r,c){
+      if(!live) return true;
+      const st=steps[i]; if(waiting||!st) return false;
+      if(st.type!=='tap' || !st.at) return false;
+      return st.at[0]===r && st.at[1]===c;
+    },
+    canSwap(r1,c1,r2,c2){
+      if(!live) return true;
+      const st=steps[i]; if(waiting||!st) return false;
+      if(st.type!=='swipe' || !st.at) return false;
+      return st.at[0]===r1 && st.at[1]===c1 && r2===r1+st.dir[0] && c2===c1+st.dir[1];
+    },
+    done(){ if(live && !waiting) next(); }
+  };
+  return api;
+})();
+
 startLevel(Math.min(PROG.unlocked,LEVELS.length-1)); showHelp(true);
 </script>
 </body>
