@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Pantry Jam: Kahve Dükkanı</title>
+<title>Pantry Jam: Coffee Shop</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -1027,13 +1027,13 @@ document.getElementById('pantryBtn').onclick=()=>{ if(S.busy||S.over) return;
   showOverlay(`<h2>Kilerim</h2><div class="stock">${rows}</div><p>Bölüm başlarken bu ürünleri tahtaya ekleyebilirsin.</p><button class="btn" data-act="close">Kapat</button>`); };
 function showHelp(first){
   if(first===true && !PROG.tutDone){
-    showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Kahve Dükkanı</small></h2></div>
+    showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Coffee Shop</small></h2></div>
       <p style="font-weight:700;margin:2px 0 4px">Küçük bir eğitim bölümüyle başlıyoruz.</p>
       <p style="opacity:.75;margin:0 0 6px">Dokunmayı, sürüklemeyi ve hamle sayısını adım adım göstereceğim. Tüm kuralları istediğin an sol üstteki başlıktan tekrar okuyabilirsin.</p>
       <button class="btn" data-act="play">Başla</button>`);
     return;
   }
-  showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Kahve Dükkanı</small></h2></div><ul class="help">
+  showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Coffee Shop</small></h2></div><ul class="help">
     <li><b>Dokun:</b> ürün, onu isteyen öndeki kutuya gider.</li>
     <li><b>Sürükle:</b> yan yana iki ürünün yerini değiştirir.</li>
     <li>3 veya daha fazla aynı ürün yan yana gelirse tek bir üst ürüne dönüşür: çekirdek espresso, buğday kurabiye, süt dondurma olur. 3 üst ürün de birleşip en değerli ürünü yapar: 3 espresso bir demlik olur.</li>
