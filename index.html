@@ -110,7 +110,19 @@ body{
 
 .overlay{position:fixed;inset:0;background:rgba(20,30,24,.72);display:none;place-items:center;z-index:100;padding:20px}
 .overlay.show{display:grid}
-.card{background:var(--linen);color:var(--ink);border-radius:22px;padding:22px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 0 var(--wood-dark);animation:enter .3s}
+.card{background:var(--linen);color:var(--ink);border-radius:22px;padding:22px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 0 var(--wood-dark);animation:enter .3s;max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain}
+/* ---- recipe book ---- */
+.book{display:grid;gap:10px;margin:12px 0 6px;text-align:left}
+.fam{background:#e6d5b1;border-radius:14px;padding:9px 10px}
+.fam .step{display:flex;align-items:center;gap:6px;min-width:0}
+.fam .step+.step{margin-top:7px;padding-top:7px;border-top:1px dashed rgba(58,35,20,.22)}
+.fam .ic{width:30px;height:30px;flex:none}
+.fam .ic .face{border-radius:8px}
+.fam .x{font-weight:800;font-size:.8rem;opacity:.7;flex:none}
+.fam .arrow{flex:none;opacity:.55;font-weight:800}
+.fam .lbl{min-width:0;font-size:.78rem;font-weight:700;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+.fam .lbl i{display:block;font-style:normal;font-weight:600;font-size:.7rem;opacity:.6}
+.book-note{font-size:.82rem;opacity:.72;margin:8px 0 2px;text-align:left}
 .card h2{margin:0;font-size:1.7rem;line-height:1.1}
 .card p{margin:8px 0 14px;line-height:1.4}
 .stars{display:flex;justify-content:center;gap:6px;margin:10px 0 4px}
@@ -153,6 +165,12 @@ body{
 .help li{margin:4px 0}
 .credit{font-size:.7rem;opacity:.55;text-align:center}
 .credit a{color:inherit}
+@media (max-width:430px){
+  .hud{gap:5px}
+  .hbtn{padding:7px 8px}
+  .lvl{font-size:1.05rem}.lvl small{font-size:.76rem}
+  .moves{min-width:68px;padding:2px 9px}.moves b{font-size:1.45rem}.moves span{font-size:.7rem}
+}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 @media (max-height:740px){
   #app{gap:6px}
@@ -178,6 +196,7 @@ body{
     <div class="lvl" id="lvlTitle" role="button" tabindex="0" style="cursor:pointer" title="Bölümler">Bölüm 1<small>Çilek bahçesi</small></div>
     <div style="display:flex;gap:6px;align-items:center;flex:none">
       <button class="hbtn pantry" id="pantryBtn" aria-label="Kilerim"><span class="pi" id="pantryIcon"></span><b id="pantryCount">0</b></button>
+      <button class="hbtn" id="bookBtn" aria-label="Tarif defteri" title="Tarif defteri"><svg viewBox="0 0 24 24" width="18" height="18" style="display:block" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v15H5.5A1.5 1.5 0 0 0 4 19.5z"/><path d="M4 19.5A1.5 1.5 0 0 0 5.5 21H20"/><path d="M8.5 7.5h6M8.5 11h4"/></svg></button>
       <button class="hbtn" id="soundBtn" aria-label="Ses"><svg viewBox="0 0 24 24" width="18" height="18" style="display:block" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" id="soundIcon"></svg></button>
       <button class="hbtn" id="restartBtn" aria-label="Bölümü baştan başlat" title="Baştan"><svg viewBox="0 0 24 24" width="18" height="18" style="display:block" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg></button>
       <div class="moves" id="moves"><b>0</b><span>hamle</span></div>
@@ -1001,6 +1020,7 @@ overlay.addEventListener('click',e=>{
   const act=e.target.closest('[data-act]')?.dataset.act; if(!act) return;
   SFX.ui();
   if(act==='help') showHelp();
+  if(act==='book') showRecipes();
   if(act==='next') startLevel(levelIndex+1);
   if(act==='retry') startLevel(levelIndex);
   if(act==='close'){ closeOverlay(); }
@@ -1014,17 +1034,30 @@ function showLevels(){
   if(S.busy) return;
   const cells=LEVELS.map((L,i)=>{ const st=PROG.stars[i]||0;
     return `<button class="lv${i===levelIndex?' cur':''}" data-act="level" data-lv="${i}" ${i>PROG.unlocked?'disabled':''} aria-label="${L.tutorial?'Eğitim':'Bölüm '+i}">${L.tutorial?'★':i}<small>${[0,1,2].map(k=>`<svg viewBox="0 0 24 24" class="${k<st?'on':''}"><path d="${STAR_PATH}"/></svg>`).join('')}</small></button>`; }).join('');
-  showOverlay(`<h2>Bölümler</h2><div class="levels">${cells}</div><button class="btn" data-act="help">Nasıl oynanır</button><button class="btn alt" data-act="close">Kapat</button>`);
+  showOverlay(`<h2>Bölümler</h2><div class="levels">${cells}</div><button class="btn" data-act="help">Nasıl oynanır</button><button class="btn alt" data-act="book">Tarif defteri</button><button class="btn alt" data-act="close">Kapat</button>`);
 }
 document.getElementById('lvlTitle').onclick=showLevels;
 const SPK_ON='<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>', SPK_OFF='<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>';
 function renderSound(){ document.getElementById('soundIcon').innerHTML = SFX.on?SPK_ON:SPK_OFF; document.getElementById('soundBtn').setAttribute('aria-pressed', SFX.on); }
+document.getElementById('bookBtn').onclick=()=>{ if(S.busy||TUT.live) return; SFX.ui(); showRecipes(); };
 document.getElementById('soundBtn').onclick=()=>{ SFX.toggle(); renderSound(); };
 renderSound();
 window.addEventListener('pointerdown', ()=>SFX.unlock(), {once:true});
 document.getElementById('pantryBtn').onclick=()=>{ if(S.busy||S.over) return;
   const rows=TIER2.map(k=>`<div class="sitem"><span class="ic">${faceHTML(k)}</span><div class="meta"><b>${ITEMS[k].name}</b>${STOCK[k]||0} adet</div></div>`).join('');
   showOverlay(`<h2>Kilerim</h2><div class="stock">${rows}</div><p>Bölüm başlarken bu ürünleri tahtaya ekleyebilirsin.</p><button class="btn" data-act="close">Kapat</button>`); };
+function showRecipes(){
+  const fams=[['beans','espresso','pot'],['wheat','cookie','croissant'],['milk','scoop','cone'],['cherry','cupcake','cake']];
+  const step=(from,to)=>`<div class="step"><span class="ic">${faceHTML(from)}</span><span class="x">×3</span>
+      <span class="arrow">→</span><span class="ic">${faceHTML(to)}</span>
+      <span class="lbl">${ITEMS[to].name}<i>3 × ${ITEMS[from].name}</i></span></div>`;
+  const rows=fams.map(([a,b,c])=>`<div class="fam">${step(a,b)}${step(b,c)}</div>`).join('');
+  showOverlay(`<h2>Tarif Defteri</h2>
+    <p class="book-note">Yan yana gelen <b>3 aynı ürün</b> tek bir üst ürüne dönüşür. Daha fazlası yan yana gelirse hepsi tek ürüne birleşir.</p>
+    <div class="book">${rows}</div>
+    <p class="book-note">Kutular istedikleri üründen <b>3 adet</b> ister. İsteyen kutu yoksa ürün bekleme rafına iner; raf 5'te dolar ve bölüm biter.</p>
+    <button class="btn" data-act="close">Kapat</button>`);
+}
 function showHelp(first){
   if(first===true && !PROG.tutDone){
     showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Coffee Shop</small></h2></div>
@@ -1041,6 +1074,7 @@ function showHelp(first){
     <li>Bölüm sonunda tahtada kalan espresso, kurabiye, demlik gibi üst ürünler kilerine gider. Sonraki bölümlerin başında onları tahtaya ekleyebilirsin.</li>
     <li>Bölümler ve bu ekran için sol üstteki bölüm adına dokun. Sesi sağ üstten açıp kapatabilirsin.</li>
     <li>Her dokunuş ve yer değiştirme 1 hamle. Hamleler bitmeden tüm kutuları doldur.</li></ul>
+    ${first===true?'':'<button class="btn alt" data-act="book">Tarif defteri</button>'}
     <button class="btn" data-act="${first===true?'play':'close'}">${first===true?'Başla':'Devam et'}</button>`);
 }
 
