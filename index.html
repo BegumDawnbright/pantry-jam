@@ -627,7 +627,15 @@ let STOCK = {}; try{ STOCK = JSON.parse(localStorage.getItem(STOCK_KEY)||'{}')||
 const SEEN_KEY='kahve-kesif-v1';
 let SEEN = {}; try{ SEEN = JSON.parse(localStorage.getItem(SEEN_KEY)||'{}')||{}; }catch(e){ SEEN={}; }
 function saveSeen(){ try{ localStorage.setItem(SEEN_KEY, JSON.stringify(SEEN)); }catch(e){} }
-function see(item){ if(item && !SEEN[item]){ SEEN[item]=1; saveSeen(); } }
+let discoverQ=[];
+function see(item){
+  if(!item || SEEN[item]) return;
+  /* the tutorial is a sandbox: only the merge it actually teaches counts as learned,
+     so side merges there still earn their panel in real play */
+  if(S && S.L.tutorial){ if(item==='espresso'){ SEEN[item]=1; saveSeen(); } return; }
+  SEEN[item]=1; saveSeen();
+  if(ITEMS[item].from) discoverQ.push(item);
+}
 /* a recipe is readable once you have made it, or while this level asks for it */
 function known(item){
   if(!item || ITEMS[item].tier===1 || SEEN[item]) return true;
@@ -826,7 +834,7 @@ function scheduleStep(delay){ if(stepTimer) return; stepTimer=setTimeout(()=>{ s
 function mergeStep(){
   if(!S || S.dead) return;
   const clusters=findClusters();
-  if(!clusters.length){ mergeChain=0; drainSlots(); checkEnd(); return; }
+  if(!clusters.length){ mergeChain=0; drainSlots(); if(!flushDiscoveries()) checkEnd(); return; }
   const chainNow=mergeChain++; setTimeout(()=>SFX.merge(chainNow),140);
   for(const g of clusters){
     const target = g.find(([r,c])=>focusCells.some(([fr,fc])=>fr===r&&fc===c)) || g.slice().sort((a,b)=>b[0]-a[0]||a[1]-b[1])[0];
@@ -1033,6 +1041,7 @@ overlay.addEventListener('click',e=>{
   SFX.ui();
   if(act==='help') showHelp();
   if(act==='book') showRecipes();
+  if(act==='dnext') closeDiscovery();
   if(act==='next') startLevel(levelIndex+1);
   if(act==='retry') startLevel(levelIndex);
   if(act==='close'){ closeOverlay(); }
@@ -1051,13 +1060,32 @@ function showLevels(){
 document.getElementById('lvlTitle').onclick=showLevels;
 const SPK_ON='<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>', SPK_OFF='<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>';
 function renderSound(){ document.getElementById('soundIcon').innerHTML = SFX.on?SPK_ON:SPK_OFF; document.getElementById('soundBtn').setAttribute('aria-pressed', SFX.on); }
-document.getElementById('bookBtn').onclick=()=>{ if(S.busy||TUT.live) return; SFX.ui(); showRecipes(); };
+document.getElementById('bookBtn').onclick=()=>{ if(S.busy) return; if(!TUT.allowBtn('#bookBtn')) return; SFX.ui(); showRecipes(); TUT.done(); };
 document.getElementById('soundBtn').onclick=()=>{ SFX.toggle(); renderSound(); };
 renderSound();
 window.addEventListener('pointerdown', ()=>SFX.unlock(), {once:true});
 document.getElementById('pantryBtn').onclick=()=>{ if(S.busy||S.over) return;
   const rows=TIER2.map(k=>`<div class="sitem"><span class="ic">${faceHTML(k)}</span><div class="meta"><b>${ITEMS[k].name}</b>${STOCK[k]||0} adet</div></div>`).join('');
   showOverlay(`<h2>Kilerim</h2><div class="stock">${rows}</div><p>Bölüm başlarken bu ürünleri tahtaya ekleyebilirsin.</p><button class="btn" data-act="close">Kapat</button>`); };
+function showDiscovery(item){
+  const from=ITEMS[item].from;
+  showOverlay(`<h2>Yeni tarif!</h2>
+    <p style="font-weight:700;margin:2px 0 10px">İlk kez <b>${ITEMS[item].name}</b> yaptın.</p>
+    <div class="book"><div class="fam"><div class="step"><span class="ic">${faceHTML(from)}</span><span class="x">×3</span>
+      <span class="arrow">→</span><span class="ic">${faceHTML(item)}</span>
+      <span class="lbl">${ITEMS[item].name}<i>3 × ${ITEMS[from].name}</i></span></div></div></div>
+    <p class="book-note">Tüm tarifler yukarıdaki <b>tarif defteri</b> düğmesinde.</p>
+    <button class="btn" data-act="dnext">Tamam</button>`);
+}
+/* returns true when a panel took over; checkEnd then waits for it to close */
+function flushDiscoveries(){
+  if(!discoverQ.length || S.over || overlay.classList.contains('show')) return false;
+  S.busy=true; SFX.ui(); showDiscovery(discoverQ.shift()); return true;
+}
+function closeDiscovery(){
+  if(discoverQ.length){ showDiscovery(discoverQ.shift()); return; }
+  closeOverlay(); S.busy=false; checkEnd();
+}
 function showRecipes(){
   const fams=[['beans','espresso','pot'],['wheat','cookie','croissant'],['milk','scoop','cone'],['cherry','cupcake','cake']];
   const ic=k=>known(k)?`<span class="ic">${faceHTML(k)}</span>`:'<span class="ic unk">?</span>';
@@ -1128,6 +1156,7 @@ const TUT = (()=>{
   function show(){
     const st=steps[i]; if(!st){ finish(); return; }
     if(st.type==='info'){ point(st.rect(), st.tip, st.sub, 'info'); return; }
+    if(st.type==='btn'){ point(document.querySelector(st.sel).getBoundingClientRect(), st.tip, st.sub, 'tap'); return; }
     const cellPos = st.cell(); if(!cellPos){ next(); return; }
     st.at = cellPos;
     point(cellRect(cellPos[0],cellPos[1]), st.tip, st.sub, st.type==='swipe'?'swipe':'tap', st.dir);
@@ -1158,7 +1187,9 @@ const TUT = (()=>{
         {type:'tap', wait:150, cell:()=>findItem('espresso'),
          tip:'Espresso’ya <b>dokun</b> ve kutusuna gönder.'},
         {type:'info', wait:800, rect:()=>document.getElementById('moves').getBoundingClientRect(),
-         tip:'Her dokunuş ve sürükleme <b>1 hamle</b>. Sayaç burada.', sub:'Hamleler bitmeden kutuları doldur'}
+         tip:'Her dokunuş ve sürükleme <b>1 hamle</b>. Sayaç burada.', sub:'Hamleler bitmeden kutuları doldur'},
+        {type:'btn', wait:250, sel:'#bookBtn',
+         tip:'Son olarak <b>tarif defteri</b>: neyin neye dönüştüğü burada yazar.', sub:'Defteri aç'}
       ];
       i=-1;
       const go=()=>{ if(overlay.classList.contains('show')){ setTimeout(go,200); return; } live=true; next(); };
@@ -1177,6 +1208,11 @@ const TUT = (()=>{
       const st=steps[i]; if(waiting||!st) return false;
       if(st.type!=='swipe' || !st.at) return false;
       return st.at[0]===r1 && st.at[1]===c1 && r2===r1+st.dir[0] && c2===c1+st.dir[1];
+    },
+    allowBtn(sel){
+      if(!live) return true;
+      const st=steps[i]; if(waiting||!st) return false;
+      return st.type==='btn' && st.sel===sel;
     },
     done(){ if(live && !waiting) next(); }
   };
