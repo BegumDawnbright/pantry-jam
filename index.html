@@ -118,6 +118,8 @@ body{
 .fam .step+.step{margin-top:7px;padding-top:7px;border-top:1px dashed rgba(58,35,20,.22)}
 .fam .ic{width:30px;height:30px;flex:none}
 .fam .ic .face{border-radius:8px}
+.fam .ic.unk{display:grid;place-items:center;border-radius:8px;background:rgba(58,35,20,.1);border:2px dashed rgba(58,35,20,.35);font-weight:800;font-size:1rem;opacity:.65}
+.fam .step.locked .lbl{opacity:.55}
 .fam .x{font-weight:800;font-size:.8rem;opacity:.7;flex:none}
 .fam .arrow{flex:none;opacity:.55;font-weight:800}
 .fam .lbl{min-width:0;font-size:.78rem;font-weight:700;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
@@ -622,10 +624,20 @@ const LEVELS = [
 const BOX_NEED = 3, SLOT_MAX = 5, BOOST_MAX = 5, STOCK_KEY='kahve-stok-v2';
 const TIER2 = Object.keys(ITEMS).filter(k=>ITEMS[k].tier>=2);
 let STOCK = {}; try{ STOCK = JSON.parse(localStorage.getItem(STOCK_KEY)||'{}')||{}; }catch(e){ STOCK={}; }
+const SEEN_KEY='kahve-kesif-v1';
+let SEEN = {}; try{ SEEN = JSON.parse(localStorage.getItem(SEEN_KEY)||'{}')||{}; }catch(e){ SEEN={}; }
+function saveSeen(){ try{ localStorage.setItem(SEEN_KEY, JSON.stringify(SEEN)); }catch(e){} }
+function see(item){ if(item && !SEEN[item]){ SEEN[item]=1; saveSeen(); } }
+/* a recipe is readable once you have made it, or while this level asks for it */
+function known(item){
+  if(!item || ITEMS[item].tier===1 || SEEN[item]) return true;
+  return !!(S && S.L.columns && S.L.columns.some(q=>q.includes(item)));
+}
 let PROG={unlocked:0,stars:{}}; try{ PROG=Object.assign(PROG, JSON.parse(localStorage.getItem('kahve-prog-v2')||'{}')); }catch(e){}
 function saveProg(){ try{ localStorage.setItem('kahve-prog-v2', JSON.stringify(PROG)); }catch(e){} }
 function saveStock(){ try{ localStorage.setItem(STOCK_KEY, JSON.stringify(STOCK)); }catch(e){} }
 function stockTotal(){ return TIER2.reduce((a,k)=>a+(STOCK[k]||0),0); }
+Object.keys(STOCK).forEach(k=>{ if(STOCK[k]>0 && !SEEN[k]){ SEEN[k]=1; } }); saveSeen();
 function renderPantry(){ document.getElementById('pantryIcon').innerHTML=faceHTML('espresso',false); document.getElementById('pantryCount').textContent=stockTotal(); }
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 const STAR_PATH = 'M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z';
@@ -822,7 +834,7 @@ function mergeStep(){
     for(const [r,c] of g){ if(r===tr&&c===tc) continue; const t=S.grid[r][c];
       S.grid[r][c]=null; t.el.style.zIndex=1; place(t,tr,tc);
       setTimeout(()=>{ t.el.remove(); S.tiles.delete(t.id); },150); }
-    keep.item=made;
+    keep.item=made; see(made);
     setTimeout(()=>{ if(keep.item!==made) return; keep.el.classList.toggle('t2',true); keep.el.classList.toggle('t3',ITEMS[made].tier===3); keep.el.innerHTML=faceHTML(made);
       keep.el.classList.remove('pop'); void keep.el.offsetWidth; keep.el.classList.add('pop'); },140);
   }
@@ -1048,13 +1060,15 @@ document.getElementById('pantryBtn').onclick=()=>{ if(S.busy||S.over) return;
   showOverlay(`<h2>Kilerim</h2><div class="stock">${rows}</div><p>Bölüm başlarken bu ürünleri tahtaya ekleyebilirsin.</p><button class="btn" data-act="close">Kapat</button>`); };
 function showRecipes(){
   const fams=[['beans','espresso','pot'],['wheat','cookie','croissant'],['milk','scoop','cone'],['cherry','cupcake','cake']];
-  const step=(from,to)=>`<div class="step"><span class="ic">${faceHTML(from)}</span><span class="x">×3</span>
-      <span class="arrow">→</span><span class="ic">${faceHTML(to)}</span>
-      <span class="lbl">${ITEMS[to].name}<i>3 × ${ITEMS[from].name}</i></span></div>`;
+  const ic=k=>known(k)?`<span class="ic">${faceHTML(k)}</span>`:'<span class="ic unk">?</span>';
+  const step=(from,to)=>`<div class="step${known(to)?'':' locked'}">${ic(from)}<span class="x">×3</span>
+      <span class="arrow">→</span>${ic(to)}
+      <span class="lbl">${known(to)?ITEMS[to].name:'???'}<i>3 × ${known(from)?ITEMS[from].name:'???'}</i></span></div>`;
   const rows=fams.map(([a,b,c])=>`<div class="fam">${step(a,b)}${step(b,c)}</div>`).join('');
   showOverlay(`<h2>Tarif Defteri</h2>
     <p class="book-note">Yan yana gelen <b>3 aynı ürün</b> tek bir üst ürüne dönüşür. Daha fazlası yan yana gelirse hepsi tek ürüne birleşir.</p>
     <div class="book">${rows}</div>
+    <p class="book-note">Henüz yapmadığın ve bu bölümde istenmeyen tarifler <b>?</b> olarak durur — bir kez yapınca deftere işlenir.</p>
     <p class="book-note">Kutular istedikleri üründen <b>3 adet</b> ister. İsteyen kutu yoksa ürün bekleme rafına iner; raf 5'te dolar ve bölüm biter.</p>
     <button class="btn" data-act="close">Kapat</button>`);
 }
