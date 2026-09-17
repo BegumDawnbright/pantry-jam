@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pantry Jam: Kahve Dükkanı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#3b2a22; --wall-line:#33241d; --wood:#6e4a36; --wood-dark:#3f281b; --wood-light:#9a6b4f;
+  --linen:#f3e6c9; --ink:#3a2314; --gold:#e3a857; --danger:#d9503f;
+  --font:"Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --wall:#2c1f19; --wall-line:#261a15; } }
+:root[data-theme="dark"]{ --wall:#2c1f19; --wall-line:#261a15; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background-color:var(--wall);
+  background-image:linear-gradient(var(--wall-line) 2px,transparent 2px),linear-gradient(90deg,var(--wall-line) 2px,transparent 2px);
+  background-size:48px 24px; font-family:var(--font); color:var(--linen);
+  display:flex; justify-content:center; overflow:hidden; height:100vh; height:100dvh; overscroll-behavior:none; user-select:none; -webkit-user-select:none;
+}
+#app{width:100%;max-width:460px;height:100%;padding:max(8px,env(safe-area-inset-top)) 12px max(8px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+#app>*{flex:none}
+.tray-wrap{flex:1 1 0!important;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+
+.hud{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.lvl{font-weight:800;font-size:1.25rem;line-height:1.1;white-space:nowrap;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}
+.lvl small{overflow:hidden;text-overflow:ellipsis}
+.lvl small{display:block;font-weight:500;font-size:.85rem;opacity:.75}
+.moves{background:var(--wood-dark);border:3px solid var(--wood-light);border-radius:14px;padding:2px 14px;text-align:center;min-width:84px;box-shadow:0 4px 0 #2a170b}
+.moves b{display:block;font-size:1.7rem;line-height:1.05}
+.moves span{font-size:.75rem;opacity:.8}
+.moves.low b{color:#ffb4a6}
+.hbtn{background:var(--wood);color:var(--linen);border:0;border-radius:12px;font:700 .9rem var(--font);padding:8px 12px;box-shadow:0 3px 0 var(--wood-dark);cursor:pointer}
+.hbtn:focus-visible,.btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+.tray-wrap{padding:8px;background:linear-gradient(var(--wood-light),var(--wood));border-radius:18px;padding:8px;box-shadow:0 6px 0 var(--wood-dark),inset 0 2px 0 rgba(255,255,255,.2)}
+#board{position:relative;margin:0 auto;border-radius:12px;background:#3d2414;box-shadow:inset 0 3px 8px rgba(0,0,0,.5);touch-action:none;overflow:hidden}
+.bgcell{position:absolute;border-radius:10px;background:rgba(0,0,0,.18)}
+.tile{position:absolute;left:0;top:0;padding:3px;transition:transform .15s cubic-bezier(.3,.7,.4,1);will-change:transform;cursor:pointer}
+.tile.fall{transition:transform .26s cubic-bezier(.45,0,.6,1.25)}
+.face,.fly{width:100%;height:100%;border-radius:24%;position:relative;
+  background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.38),transparent 52%),var(--c);
+  box-shadow:inset 0 -5px 0 rgba(0,0,0,.25),0 3px 0 rgba(0,0,0,.35);display:grid;place-items:center}
+.face svg,.fly svg{width:68%;height:68%;fill:#fff8ea;filter:drop-shadow(0 2px 0 rgba(0,0,0,.25))}
+.t2 .face,.fly.t2{box-shadow:inset 0 0 0 3px var(--gold),inset 0 -6px 0 rgba(0,0,0,.28),0 3px 0 rgba(0,0,0,.35)}
+.star{position:absolute;right:6%;top:5%;width:24%!important;height:24%!important;fill:var(--gold)!important}
+.star.s2{right:auto;left:6%}
+.t3 .face,.fly.t3{box-shadow:inset 0 0 0 3px var(--gold),inset 0 0 0 6px rgba(255,236,170,.35),inset 0 -7px 0 rgba(0,0,0,.3),0 0 10px rgba(232,184,74,.55),0 3px 0 rgba(0,0,0,.35)}
+.tile.pop .face{animation:pop .34s ease}
+@keyframes pop{0%{transform:scale(.4)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+.tile.sel .face{outline:3px solid #fff;outline-offset:-2px}
+.fly{position:fixed;z-index:50;pointer-events:none}
+
+.shelf-label{font-size:.8rem;opacity:.75;margin:0 2px -4px}
+.slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;background:var(--wood-dark);border-radius:14px;padding:7px;box-shadow:inset 0 3px 6px rgba(0,0,0,.45)}
+.slot>div,.pip>div{width:100%;height:100%}
+.arrive{animation:arrive 360ms linear both}
+@keyframes arrive{0%,96%{opacity:0}100%{opacity:1}}
+.slot{min-width:0;max-width:64px;justify-self:center;width:100%;overflow:hidden;aspect-ratio:1;border-radius:12px;background:rgba(255,255,255,.07);border:2px dashed rgba(243,230,201,.2);padding:2px}
+.slot .face{box-shadow:inset 0 -4px 0 rgba(0,0,0,.25)}
+.slots.warn{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+.boxes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.col{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.crate{background:linear-gradient(#c28a55,#a26a3f);border-radius:14px;padding:7px 6px 8px;box-shadow:0 5px 0 var(--wood-dark),inset 0 2px 0 rgba(255,255,255,.3);color:var(--ink);transition:transform .25s, opacity .25s}
+.crate.done{transform:translateY(-14px) scale(.9);opacity:0}
+.crate.enter{animation:enter .3s ease}
+@keyframes enter{from{transform:translateY(24px);opacity:0}}
+.crate-head{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:4px;row-gap:1px;background:var(--linen);border-radius:9px;padding:4px 5px 3px}
+.crate-head .icon{width:clamp(22px,7vw,30px);height:clamp(22px,7vw,30px);flex:none}
+.crate-head .icon .face{border-radius:8px}
+.crate-head .name{grid-column:1/-1;text-align:center;font-weight:800;font-size:.85rem;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crate-head .recipe{font-size:.72rem;font-weight:700;opacity:.8;display:flex;align-items:center;justify-content:center;gap:2px;white-space:nowrap}
+.crate-head .recipe i{display:inline-block;width:13px;height:13px}
+.pips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:6px}
+.pip{aspect-ratio:1;border-radius:9px;background:rgba(58,35,20,.35);box-shadow:inset 0 2px 3px rgba(0,0,0,.35);padding:1px}
+.pip .face{border-radius:8px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.empty-col{border:2px dashed rgba(243,230,201,.25);border-radius:14px;height:96px;display:grid;place-items:center;font-size:.8rem;opacity:.6}
+.queue{display:flex;gap:4px;justify-content:center;min-height:24px}
+.queue .q{width:24px;height:24px;opacity:.85}
+.queue .q .face{border-radius:7px;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.queue .more{font-size:.8rem;font-weight:700;opacity:.8;align-self:center}
+
+.overlay{position:fixed;inset:0;background:rgba(20,30,24,.72);display:none;place-items:center;z-index:100;padding:20px}
+.overlay.show{display:grid}
+.card{background:var(--linen);color:var(--ink);border-radius:22px;padding:22px 20px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 0 var(--wood-dark);animation:enter .3s}
+.card h2{margin:0;font-size:1.7rem;line-height:1.1}
+.card p{margin:8px 0 14px;line-height:1.4}
+.stars{display:flex;justify-content:center;gap:6px;margin:10px 0 4px}
+.stars svg{width:44px;height:44px;fill:#d8c9a8}
+.stars svg.on{fill:var(--gold)}
+.btn{display:block;width:100%;border:0;border-radius:14px;font:800 1.05rem var(--font);padding:11px;margin-top:8px;cursor:pointer;background:#5f8f4e;color:#fff;box-shadow:0 4px 0 #3b5f2f}
+.btn.alt{background:var(--wood);box-shadow:0 4px 0 var(--wood-dark)}
+.pantry{display:flex;align-items:center;gap:4px;padding:5px 8px}
+.pantry .pi{width:26px;height:26px}
+.pantry .pi .face{border-radius:7px}
+.pantry b{font-size:1.05rem;min-width:14px}
+.pantry.bump{animation:bump .3s}
+@keyframes bump{50%{transform:scale(1.18)}}
+.stock{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:12px 0 4px}
+.sitem{display:flex;align-items:center;gap:10px;min-width:0;background:#e6d5b1;border-radius:12px;padding:6px}
+.sitem .ic{width:36px;height:36px;flex:none}
+.sitem .ic .face{border-radius:9px}
+.sitem .meta{flex:1;min-width:0;text-align:left;line-height:1.1;font-size:.85rem;white-space:nowrap}
+.sitem .meta b{display:block;font-size:.95rem}
+.step{display:flex;align-items:center;gap:6px;flex:none}
+.step button{width:28px;height:28px;border-radius:9px;border:0;background:var(--wood);color:var(--linen);font:800 1.1rem var(--font);cursor:pointer;box-shadow:0 2px 0 var(--wood-dark)}
+.step button:disabled{opacity:.35;cursor:default}
+.step span{min-width:18px;font-weight:800;text-align:center}
+.gain{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:6px;margin:6px 0;max-width:100%}
+.gain>div{display:flex;align-items:center;justify-content:center;gap:2px;font-weight:800;font-size:.95rem;min-width:0;background:#e6d5b1;border-radius:10px;padding:5px 2px}
+.gain .ic{width:26px;height:26px;flex:none}
+.gain .ic .face{border-radius:8px}
+.tile.boost .face{animation:pop .4s ease}
+.logo{display:flex;align-items:center;justify-content:center;gap:10px}
+.logo .lj{width:44px;height:44px;transform:rotate(-8deg)}
+.logo .lj .face{border-radius:12px}
+.levels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:14px 0 6px}
+.lv{aspect-ratio:1;border:0;border-radius:12px;background:var(--wood);color:var(--linen);font:800 1.2rem var(--font);box-shadow:0 3px 0 var(--wood-dark);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;padding:0}
+.lv small{display:flex;gap:1px;margin-top:3px}
+.lv small svg{width:10px;height:10px;fill:rgba(255,255,255,.3)}
+.lv small svg.on{fill:var(--gold)}
+.lv:disabled{background:#cdbb97;color:#9c8866;box-shadow:0 3px 0 #b3a07c;cursor:default}
+.lv.cur{outline:3px solid #5f8f4e;outline-offset:1px}
+.help{font-size:.9rem;text-align:left}
+.help li{margin:4px 0}
+.credit{font-size:.7rem;opacity:.55;text-align:center}
+.credit a{color:inherit}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+@media (max-height:740px){
+  #app{gap:6px}
+  .lvl{font-size:.95rem}.lvl small{font-size:.72rem}
+  .hud{gap:6px}.moves{min-width:62px}
+  .moves{padding:0 10px;min-width:70px}.moves b{font-size:1.35rem}
+  .hbtn{padding:6px 10px}
+  .shelf-label{display:none}
+  .slots{padding:5px;gap:5px}
+  .crate{padding:5px 5px 6px}
+  .crate-head .icon{width:24px;height:24px}
+  .crate-head .name{font-size:.8rem}
+  .pips{margin-top:4px}
+  .queue{min-height:18px}.queue .q{width:18px;height:18px}
+  .credit{display:none}
+  .empty-col{height:80px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="lvl" id="lvlTitle" role="button" tabindex="0" style="cursor:pointer" title="Bölümler">Bölüm 1<small>Çilek bahçesi</small></div>
+    <div style="display:flex;gap:6px;align-items:center;flex:none">
+      <button class="hbtn pantry" id="pantryBtn" aria-label="Kilerim"><span class="pi" id="pantryIcon"></span><b id="pantryCount">0</b></button>
+      <button class="hbtn" id="soundBtn" aria-label="Ses"><svg viewBox="0 0 24 24" width="18" height="18" style="display:block" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" id="soundIcon"></svg></button>
+      <button class="hbtn" id="restartBtn" aria-label="Bölümü baştan başlat" title="Baştan"><svg viewBox="0 0 24 24" width="18" height="18" style="display:block" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg></button>
+      <div class="moves" id="moves"><b>0</b><span>hamle</span></div>
+    </div>
+  </div>
+  <div class="tray-wrap"><div id="board"></div></div>
+  <div class="shelf-label">Bekleme rafı</div>
+  <div class="slots" id="slots"></div>
+  <div class="boxes" id="boxes"></div>
+  <div class="credit">İkonlar: <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a> (Delapouite, Lorc, Rihlsul), CC BY 3.0</div>
+</div>
+
+<div class="overlay" id="overlay"><div class="card" id="card"></div></div>
+
+<script>
+const PATHS = {"beans": ["M203.043 26.648c-8.893.062-17.672 1.326-26.193 3.873-8.454 2.53-16.242 6.197-23.31 10.867 7.722 19.622 27.435 44.53 50.27 65.793 23.842 22.202 51.18 41.065 68.835 49.572l.207.1.203.103c16.224 8.335 27.71 21.453 34.34 35.924 4.27 9.318 6.757 19.078 8.207 29 13-10.14 26.704-18.26 40.636-24.153-1.06-18.31-5.088-37.51-12.424-56.735-15.386-40.32-42.26-72.78-72.695-92.576-21.875-14.228-45.35-21.926-68.077-21.768zm-76.408 42.305c-5.113 7.934-9.306 16.78-12.492 26.387-10.64 32.074-9.777 72.308 5.61 112.63 9.312 24.403 22.837 45.92 38.81 63.5 15.736 4.708 31.3 11.982 45.92 21.852 11.296 7.627 21.362 16.357 30.085 25.852 2.847.692 5.695 1.282 8.54 1.746 5.42-14.138 12.455-28.204 21.124-41.85 5.353-8.424 11.116-16.354 17.21-23.757.072-5.192.03-10.223-.217-15.026-.67-12.99-2.75-24.1-6.56-32.414-3.808-8.314-8.77-14.122-18.06-18.894l.41.202c-22.878-11.025-51.447-31.172-77.74-55.655-20.9-19.46-40.288-41.258-52.64-64.574zm279.752 135.725c-13.507.11-27.796 3.247-42.252 9.248-30.84 12.802-61.806 38.75-84.71 74.797-11.717 18.442-20.137 37.67-25.372 56.523 20.55 34.478 25.597 74.082 10.793 107.342 2.417 3.444 5.08 6.657 7.986 9.613 21.644-18.674 46.588-34.143 64.316-50.028 9.69-8.68 17.027-17.275 21.104-25.46 4.077-8.187 5.48-15.697 3.36-25.923l-.124-.595-.082-.6c-8.053-58.294 6.075-92.552 26.664-113.51 16.556-16.85 33.036-25.725 44.405-37.442-8.214-2.73-16.972-4.04-26.088-3.965zm56.746 23.953c-16.63 20.67-37.133 30.217-49.383 42.686-14.076 14.328-23.793 31.575-16.715 83.104 3.408 17.52.413 34.346-6.558 48.342-7.097 14.247-17.71 25.832-29.305 36.222-17.613 15.782-37.93 29.296-54.926 42.48 19.275 5.007 41.22 2.584 63.565-6.693 30.84-12.8 61.808-38.75 84.71-74.797 22.905-36.048 33.24-75.107 31.728-108.463-1.156-25.51-9.035-47.368-23.115-62.88zm-66.098 125.79c-.06-.315-.108-.628-.174-.943l.208 1.193c-.01-.085-.02-.165-.033-.25zm-280.223-71.424c-18.383-.166-35.7 3.865-50.275 11.807.1.003.187.01.287.013 8.63.305 19.464-.713 31.938.99 12.473 1.704 27.085 7.368 38.154 19.893 11.07 12.524 18.66 30.28 23.947 55.78l.125.594.082.602c2.453 17.792 13.786 28.085 33.434 37.722 16.764 8.223 38.287 14.095 58.717 20.073 9.15-41-12.56-91.006-58.81-122.23-24.938-16.836-52.274-25.015-77.597-25.244zm-81.078 41.447c-25.27 43.53-5.004 107.405 50.106 144.612 54.225 36.61 119.786 32.276 151.34-5.7-18.436-5.254-39.336-11.22-58.53-20.634-24.75-12.14-48.34-32.54-53.1-64.222-4.533-21.7-10.59-33.28-15.61-38.96-5.04-5.707-8.97-7.095-16.05-8.06-7.08-.968-16.81-.277-28.333-.683-8.98-.316-19.516-1.605-29.823-6.352zm89.817 54.055c.022.1.044.192.065.293l-.207-1.196c.042.304.097.6.143.904z"], "espresso": ["M144 32S94.11 69.4 96 96c1.604 22.57 44.375 25.665 48 48 1.91 11.772-16 32-16 32s48-25.373 48-48-42.8-25.978-48-48c-3.875-16.414 16-48 16-48zm80 0s-49.89 37.4-48 64c1.604 22.57 44.375 25.665 48 48 1.91 11.772-16 32-16 32s48-25.373 48-48-42.8-25.978-48-48c-3.875-16.414 16-48 16-48zm80 0s-49.89 37.4-48 64c1.604 22.57 44.375 25.665 48 48 1.91 11.772-16 32-16 32s48-25.373 48-48-42.8-25.978-48-48c-3.875-16.414 16-48 16-48zM73.293 201c1.43 63.948 18.943 179.432 74.707 238h152c55.764-58.568 73.278-174.052 74.707-238H73.293zm319.598.445c-.186 9.152-.652 19.252-1.472 30.057C419.312 235.162 441 259.142 441 288c0 31.374-25.626 57-57 57-4.387 0-8.656-.517-12.764-1.465-2.912 9.62-6.176 19.165-9.84 28.51C368.602 373.97 376.176 375 384 375c48.155 0 87-38.845 87-87 0-45.153-34.153-82.12-78.11-86.555zM42.763 457c1.507 5.193 3.854 11.2 6.955 16.37 2.637 4.394 5.69 8.207 8.428 10.58C60.882 486.32 63 487 64 487h320c1 0 3.118-.678 5.855-3.05 2.738-2.373 5.79-6.186 8.428-10.58 3.1-5.17 5.448-11.177 6.955-16.37H42.762z"], "pot": ["M49.66 45.63L108.1 148.3h217.5V78.25zm27.9 120.67v19.6H334.6c48 0 82.2 29.3 103.2 64.3 19 31.5 28.2 67.7 29.9 95.6h20.1c-2.1-32.8-15.2-76.2-37.2-111.8-24.1-38.9-57.8-67.7-98-67.7zm13.29 37.6c-3.15 4.7-9 15.1-14.87 28.6-7.34 16.9-15.6 38.8-23.3 62.9C37.29 343.7 24.2 400.9 24.2 443.3c0 6 3.27 13.1 8.54 18.5 5.27 5.3 12.2 8.6 17.99 8.6H370.6c5.6 0 12.6-3.3 17.9-8.6 5.3-5.4 8.6-12.5 8.6-18.5 0-42.4-13.1-99.6-28.6-147.9-7.7-24.1-16-46-23.4-62.9-5.9-13.5-11.8-23.9-15-28.6zM65.01 337.1H355.6c7.5 29.1 12.8 59.7 12.8 84.3 0 13.8-14.6 28.3-29.2 28.3H81.04c-14.29 0-28.73-14.5-28.73-28.3 0-24.6 5.24-55.2 12.7-84.3z"], "wheat": ["M98.344 16.688C79.692 43.785 68.498 69.01 65.5 89.56l23.938 39.157 28.624-33.47c.868-21.213-5.49-48.677-19.718-78.563zM472.5 19.625C444.04 36.055 423.112 54 411.562 71.25l4.75 45.688L456.563 99c9.89-18.777 15.938-46.29 15.938-79.375zm-91.75 27.28c-10.153 21.036-16.8 40.84-20.156 58.314l18.375 57.686 19.78-34.25-6.5-62.22h.03c-3.422-6.392-7.252-12.906-11.53-19.53zM27.25 80.782c-.125 23.364 2.393 44.102 6.875 61.314L75.5 186.25l3.125-39.406L46 93.47l.03-.032c-5.83-4.287-12.08-8.52-18.78-12.657zm132.844 10.532c-8.415 3.504-16.29 7.213-23.594 11.094l-39.25 45.97-3.094 39.374 50.438-39.094c6.712-15.904 12.09-35.263 15.5-57.344zm177.22 21.626c-24.024 58.09-16.16 97.86 7.873 108.5l21.157-36.625-19.594-61.438c-2.973-3.46-6.108-6.943-9.438-10.438zm146.03.218c-4.55-.028-8.97.084-13.28.28L414.935 138l-19.78 34.28 62.343-13.655c12.897-11.47 26.09-26.626 38.656-45.094-4.358-.216-8.64-.348-12.812-.374zm-226.094 8.72c-23.24 23.238-38.832 46.003-45.53 65.655l16.436 42.907 34.22-27.75c4.695-20.704 3.436-48.856-5.126-80.812zM16.406 159.06c3.28 62.77 27.482 95.31 53.75 94.594l3.344-42.22-44.063-47c-4.175-1.844-8.515-3.647-13.03-5.374zm143.22 11.375c-6.457 1.354-12.63 2.896-18.5 4.563l-48.97 37.938-3.312 41.75c26.492 7.51 57.16-20.567 70.78-84.25zm16.06 1.563c-4.36 22.935-5.65 43.762-4.374 61.5l32.688 51 10.22-38.188-22.407-58.437h.03c-4.952-5.28-10.318-10.592-16.155-15.875zm267.408 8.938l-60.563 13.218-20.936 36.25c20.682 18.195 60.438 6.035 100.125-45.625-6.413-1.552-12.62-2.823-18.626-3.843zm-138.688 25.53c-8.912 1.92-17.304 4.16-25.187 6.657l-46.97 38.03-10.22 38.19 56.69-29.283c9.493-14.424 18.323-32.49 25.686-53.593zm155.125 25.063c-25.85 20.324-44.046 41.06-53.03 59.782l11.22 44.532 37.28-23.47c7.126-19.99 9.236-48.088 4.53-80.843zm-123.342 8.595c-34.435 77.573-59.394 159.06-62.97 253.03h18.72c3.558-90.792 27.573-169.428 61.312-245.436l-17.063-7.595zm-185.375 6.906c-8.173 62.347 9.714 98.713 35.687 102.75l10.97-40.874-34.814-54.25c-3.77-2.57-7.713-5.105-11.844-7.625zm221.75 24.532c-7.053 22.243-10.817 42.77-11.657 60.532l26.406 54.594L402 349.967l-15.28-60.687h.06c-4.3-5.848-9.033-11.76-14.217-17.717zm-302.47 1.532c-8.664 74.584-8.13 147.835 12.188 220.062h19.44c-20.877-70.772-21.764-143.02-13.064-217.906l-18.562-2.156zm219.47 11.094c-6.613.16-12.953.54-19.032 1.125L215.5 313.78l-10.844 40.408c24.69 12.23 59.938-9.82 84.906-70zm206.718 36.937c-9.072.844-17.664 2.052-25.78 3.594l-51.156 32.217-14.688 36.657 59.75-22.313c11.14-13.193 22.055-30.075 31.875-50.155zm-157.31 22c-15.528 60.938-2.096 99.19 23.217 106.28l15.72-39.28-28.094-58.03c-3.43-3-7.053-5.985-10.844-8.97zM183.25 368.72c-12.674 41.233-22.26 82.547-26.844 124.436h18.813c4.507-39.722 13.69-79.23 25.905-118.97l-17.875-5.467zm270 26.655l-58 21.688-15.563 38.875c23.056 15.098 60.673-2.606 92.625-59.407-6.594-.627-12.95-1.003-19.062-1.155zM356.5 469.03c-1.874 7.713-3.185 15.757-3.656 24.126h18.687c.45-6.686 1.55-13.206 3.126-19.687l-18.156-4.44z"], "cookie": ["M266.9 31.85C158.6 30.52 30.27 148.3 32 256c1.82 113.4 142.9 231.4 256 224 95.5-6.2 189.9-119.7 189.8-215.4C477.7 161.1 375.4 36.94 272 32c-1.7-.08-3.4-.13-5.1-.15zm24.8 20.97c1 .04 1.9.18 2.9.41 16.7 4.1 27.3 37.42 15 49.47-12 11.8-44 .6-48-15.74-3.5-14.32 15.1-34.72 30.1-34.14zM135.4 131.4c1.4 0 2.7.2 4 .5 17.9 4.1 31.6 34.3 22.5 50.3-7.5 13.1-30.6 9.8-45 5.2-8.9-2.8-21.07-9.3-20.95-18.7.23-17.2 20.55-36.9 38.15-37.3h1.3zm238.7 69.5h1.2c12.1.2 24.7 14.9 25 27 .3 10.6-10.4 22.9-21 24-11.5 1.2-26.1-9.5-27.7-21-1.7-12.4 10-29.2 22.5-30zm-141 105.7c15.4 0 26 22.1 27 37.5.7 11.9-5.4 29.7-17.2 31.5-16.1 2.5-33.8-17.6-35.3-33.8-1.3-14.4 11-35.2 25.5-35.2zm188.6 1.1c1.2 0 2.2.1 3.3.4 11.7 3.2 17.8 26.9 9 35.2-8.5 8.1-30.9.9-33.7-10.5-2.5-10.2 10.6-24.8 21.4-25.1zm-269.6 19.9c19.2-.5 36 30.2 30.8 48.7-3.7 13.1-23.1 18.2-36.8 18-9-.1-21.4-4-24-12.7-5.9-19.7 9.4-53.4 30-54zm166.2 87.6c.3 0 .7.1 1 .1 11.3 1.1 21.2 17.4 18.8 28.5-2.2 10.1-16.2 18.7-26.3 16.5-8.8-1.9-15.8-13.5-14.9-22.5 1-10.2 11.2-22.8 21.4-22.6z"], "croissant": ["M256 99.633c-37.26 0-74.595 11.18-119.844 33.328 1.565 57.322 29.767 114.884 57.942 145.362C211.383 271.182 233.625 268 256 268s44.617 3.18 61.902 10.322c28.175-30.478 56.377-88.04 57.942-145.36C330.594 110.813 293.26 99.63 256 99.63zm-134.422 54.135c-25.185 6.602-40.16 20.58-49.844 40.697-5.602 34.042-.223 57 10.98 74.916 10.892 17.424 27.93 30.347 47.21 42.335 10.962-1.166 21.316-2.24 30.152-5.563 8.206-3.086 15.32-8.034 21.715-17.27-27.815-30.238-53.7-80.825-60.212-135.114zm268.844 0c-6.513 54.29-32.397 104.876-60.213 135.115 6.393 9.235 13.508 14.183 21.714 17.27 8.836 3.322 19.19 4.396 30.152 5.562 19.28-11.988 36.318-24.91 47.21-42.334 11.203-17.915 16.582-40.873 10.98-74.915-9.684-20.118-24.66-34.095-49.844-40.697zM54.33 234.014C36.35 260.292 24 289.6 24 320c0 21.623 1.848 42.626 6.418 58.707 4.57 16.08 11.55 26.322 20.512 29.85 13.776 4.573 33.902-22.085 45.773-41.323 3.23-6.184 6.993-13.896 10.555-21.39 5.296-11.145 8.708-18.703 10.545-22.787-18.77-11.952-36.496-25.745-48.657-45.194-7.68-12.283-12.92-26.732-14.816-43.85zm403.34 0c-1.897 17.117-7.137 31.566-14.816 43.85-12.16 19.448-29.886 33.24-48.657 45.193 1.837 4.084 5.25 11.642 10.545 22.787 3.562 7.494 7.326 15.206 10.555 21.39 7.403 14.066 26.39 45.016 45.773 41.323 8.96-3.528 15.942-13.77 20.512-29.85C486.152 362.627 488 341.623 488 320c0-30.4-12.35-59.708-30.33-85.986z"], "milk": ["M302.958 20.019l-93.916 46.564v35.404c31.305-15.522 62.61-31.047 93.916-46.568zm6.53 52.252l-95.4 47.3 63.036 78.137 95.397-47.303zm-111.915 55.492l-33.732 16.724h47.224zm-22.119 34.722l71.615 26.633-21.484-26.633zm-41.021 3.948v276.752l131.22 48.796v-276.75zm243.134 1.56c-31.306 15.521-62.61 31.044-93.916 46.567v275.863l93.916-46.567zM176.501 272.466s-15.3 15.085-9.889 24.203c4.167 7.02 21.889 5.418 21.889 5.418l15.549 3.848s17.72 10.374 21.887 5.416c5.41-6.44-9.887-29.098-9.887-29.098s35.91 33.492 29.662 47.318c-3.143 6.955-24.719-2.117-24.719-2.117s5.495 7.21 4.944 10.549c-1.001 6.062-13.774 9.916-13.774 9.916s1.111 21.24-6 25.168c-5.147 2.843-14.628.497-19.775-4.895-7.111-7.448-6-28.136-6-28.136s-12.775-10.177-13.776-16.735c-.55-3.611 4.944-8.103 4.944-8.103s-21.575-1.607-24.717-10.117c-6.247-16.919 29.662-32.635 29.662-32.635z"], "scoop": ["M78.7 38.33h-1.58c-2.8.11-5.57.5-8.32 1.12-10.98 2.52-21.36 9.11-28.68 17.26-7.32 8.14-11.31 17.67-11.17 24.98.14 7.31 2.92 13.01 13.47 17.77C149.1 147.6 219.6 233.1 279.7 310.8c6.5-14.2 14.7-27.2 24.8-37.8 1.2-1.3 2.4-2.5 3.7-3.7-57.2-84.6-119-165.5-205.4-223.34-8.14-5.42-16.2-7.65-24.1-7.63zM360.1 264.2c-10.1.4-19.5 3.6-28.1 9.1-9.4 54.4.7 95.7 24.4 123.5 23.6 27.7 61.6 42.7 111.4 41.7 6.5-8.3 11.5-18.2 14.3-29.7 2-8.4.8-11.3-2-14.4-2.8-3.2-9-6.4-17.4-9.4-16.8-5.9-41.6-10.9-60.4-28.6v-.1c-17-16-20.1-41.6-24.7-61.8-2.3-10-4.8-18.9-7.8-24-3-5.1-4.6-6.5-9.7-6.3zm-48.8 28.6c-9.3 12-16.8 27-22 43.2-12.5 39.3-9.8 84.4 9 106.3 19.1 22.3 61.1 35 100.2 30.5 18.3-2.1 35.6-7.5 49.8-16.8-44.6-2.9-81.3-19.1-105.6-47.5-24.1-28.3-35.3-67.9-31.4-115.7z"], "cone": ["M256 25c-27.517 0-50.167 19.982-54.314 46.293C203.77 71.113 205.87 71 208 71c18.356 0 35.153 6.846 48 18.1C268.85 77.848 285.645 71 304 71c2.13 0 4.23.113 6.314.293C306.167 44.983 283.517 25 256 25zm-48 64c-30.482 0-55 24.518-55 55 0 15.277 6.16 29.055 16.14 39h73.225C235.183 171.704 231 158.33 231 144c0-15.433 4.844-29.762 13.07-41.574C234.428 94.06 221.833 89 208 89zm96 0c-30.482 0-55 24.518-55 55 0 15.277 6.16 29.055 16.14 39h77.72c9.98-9.945 16.14-23.723 16.14-39 0-30.482-24.518-55-55-55zm-92.912 112L256 217.332 300.912 201h-89.824zm-37.315 5.586l10.995 36.648 44.894-16.324-55.89-20.324zm164.454 0l-55.89 20.322 44.895 16.326 10.995-36.648zM256 236.486l-55.96 20.35 55.96 24.87 55.96-24.87-55.96-20.35zm-62.055 37.338l9.387 31.29 30.508-13.56-39.895-17.73zm124.11 0l-39.895 17.73 30.508 13.56 9.387-31.29zM256 301.404l-42.916 19.075L256 341.936l42.916-21.458L256 301.403zm-41.863 39.727l5.67 18.903L235.873 352l-21.736-10.87zm83.726 0L276.127 352l16.066 8.033 5.67-18.902zM256 362.064l-30.943 15.472 4.564 15.213 26.38 13.19 26.38-13.19 4.563-15.213L256 362.062zm0 64l-14.248 7.123L256 480.678l14.248-47.492L256 426.063z"], "cherry": ["M278.814 35.137c-3.87 29.372 2.21 62.917 23.563 91.277 24.7 32.807 70.077 59.506 146.49 64.467-10.864-53.306-31.943-84.387-60.87-107.415-23.07-18.367-51.784-31.734-84.02-45.96 29.838 36.785 60.63 73.392 105.382 92.694l-7.13 16.527c-55.713-24.03-90.292-70.698-123.416-111.59zM259.2 46.79c-42.613 88.792-88.927 175.71-147.975 257.08-1.967-1.61-3.77-3.225-5.454-4.725-4.98-4.436-9.11-7.99-15.42-10.407-2.338-.896-4.675-1.33-7.02-1.326-7.035.01-14.15 3.948-21.65 11.11-10 9.553-18.946 24.412-23.893 37.62-14.318 38.227 4.955 80.574 43.186 94.89 38.23 14.32 80.582-4.952 94.9-43.178 4.94-13.187 8.024-30.42 6.8-44.243-.61-6.91-2.283-12.897-4.786-17.208-2.503-4.31-5.532-7.033-10.21-8.627-4.466-1.52-10.517-1.707-17.765-1.85-6.83-.133-14.742-.297-22.97-3.064 53.342-73.767 96.236-151.695 135.23-230.99-7.14 56.593-14.18 114.543-29.91 170.29-7.03-.83-12.847-3.195-17.887-5.144-6.222-2.407-11.337-4.285-18.094-4.336-10.013-.077-17.4 6.766-23.415 19.216-5.06 10.48-8.094 24.21-8.93 36.708 3.11.388 6.3 1.027 9.544 2.132 8.872 3.023 15.68 9.234 19.973 16.627 4.293 7.394 6.374 15.88 7.15 24.662.775 8.75.267 17.862-1.156 26.727 11.08 6.646 24.062 10.47 37.967 10.47 40.825 0 73.725-32.898 73.725-73.718 0-14.08-3.156-31.3-9.15-43.817-2.997-6.257-6.663-11.276-10.52-14.435-3.856-3.16-7.648-4.648-12.59-4.5-4.713.142-10.445 2.09-17.282 4.498-3.142 1.107-6.54 2.286-10.188 3.25 11.84-43.77 18.6-88.247 24.276-131.803C263.302 95.443 258.402 70.4 259.2 46.79zm46.732 110.605c1.617 5.452 3.26 10.96 4.945 16.554 20.44 67.845 45.324 144.313 68.207 195.255-4.537.18-8.715-.204-12.46-.52-6.65-.564-12.083-.93-18.583.917-9.63 2.738-14.8 11.38-17.075 25.017-2.275 13.638-.524 30.894 3.437 44.43 11.464 39.178 52.28 61.515 91.463 50.052 39.182-11.464 61.52-52.276 50.057-91.454-3.955-13.514-11.82-29.155-21.086-39.484-4.634-5.164-9.564-8.953-14.152-10.902-2.295-.975-4.456-1.554-6.63-1.698-2.177-.143-4.368.15-6.718.915-4.485 1.458-9.44 4.937-15.324 9.168-4.337 3.118-9.218 6.61-15.076 9.29-21.51-47.232-46.358-122.123-66.762-189.375-9.007-5.556-17.075-11.646-24.242-18.168z"], "cupcake": ["M236.854 43.83c-20.16 13.472-36.99 24.95-45.3 34.426-4.717 5.377-6.786 9.82-7.056 13.88-.27 4.057 1.052 8.634 5.95 14.97l1.128 1.458c18.455-3.476 39.757-5.143 62.834-4.593 31.04.74 60.438 5.363 85.147 12.778-1.497-2.823-2.983-5.458-4.604-7.744-5.866-8.274-11.98-13.49-30.498-12.436l-.514.03-.51-.037c-32.236-2.307-48.314-12.643-56.16-25.792-5.796-9.718-7.625-19.235-10.416-26.938zm14.03 76.106c-33.25-.134-62.172 4.695-82.003 12.46-10.576 4.142-18.52 9.15-23.18 14.196-4.658 5.047-5.933 9.63-5.083 13.92.713 3.6 3.05 7.485 7.738 11.78 25.135-9.197 55.557-16.22 89.254-20.02 48.777-5.503 95.2-3.222 131.65 5.238 7.676 1.78 14.91 3.834 21.654 6.174-1.476-3.516-4.52-7.305-9.797-11.487-6.712-5.317-16.727-10.752-29.053-15.44-24.65-9.373-58.415-15.87-94.474-16.728-2.254-.054-4.49-.086-6.705-.094zm43.085 44.937c-16.56-.05-33.91.863-51.58 2.856-47.114 5.313-87.534 17.302-114.218 31.905-13.342 7.3-23.203 15.28-28.82 22.926-4.695 6.39-6.384 12.186-5.698 17.534 3.86-1.397 7.875-2.74 12.057-4.028 39.064-12.02 91.923-19.22 150.29-19.22 58.367 0 111.226 7.2 150.29 19.22 1.26.388 2.505.782 3.737 1.18 4.37-3.597 7.91-7.223 10.522-10.777 5.616-7.647 6.945-14.448 5.03-20.64s-7.217-12.243-17.025-18.148c-9.808-5.906-23.772-11.197-40.578-15.098-21.008-4.876-46.41-7.63-74.008-7.71zM256 231.153c-56.508 0-107.65 7.127-143.867 18.27-18.11 5.573-32.444 12.176-41.77 18.96-9.325 6.784-13.42 13.294-13.42 19.617s4.095 12.833 13.42 19.617c.07.05.144.1.213.15l57.447-28.722 63.22 32.01 64.827-32.012 62.36 32.012 65.615-31.977 57.38 28.69c.068-.05.143-.1.212-.15 9.325-6.785 13.42-13.295 13.42-19.618 0-6.323-4.095-12.833-13.42-19.617-9.326-6.784-23.66-13.387-41.77-18.96-36.218-11.143-87.36-18.27-143.867-18.27zm127.955 65.77L327.51 324.43 311.938 449l-15.875-2 15.205-121.635-55.338-28.408-55.332 27.326L215.938 447l-15.875 2-15.42-123.352-56.666-28.693-54.022 27.012L133.605 488h244.79l59.65-164.033-54.09-27.045z"], "cake": ["M153 73v27.3c12-6.92 25.5-13.3 39-13.3 16 0 27.6 9.96 37.6 18 10 8 18.5 14 26.4 14 7.9 0 16.4-6 26.4-14 10-8.04 21.6-18 37.6-18 13.5 0 27 6.38 39 13.3V73H153zm39 32c-7.9 0-23.8 7-36.2 14.7-1 .6-1.9 1.2-2.8 1.7V183h206v-61.6c-.9-.5-1.8-1.1-2.8-1.7C343.8 112 327.9 105 320 105c-7.9 0-16.4 6-26.4 14S272 137 256 137s-27.6-10-37.6-18-18.5-14-26.4-14zM89 201v27.3c12-6.9 25.6-13.3 39-13.3 16 0 27.6 10 37.6 18s18.5 14 26.4 14c7.9 0 16.4-6 26.4-14s21.6-18 37.6-18 27.6 10 37.6 18 18.5 14 26.4 14c7.9 0 16.4-6 26.4-14s21.6-18 37.6-18c13.5 0 27 6.4 39 13.3V201H89zm39 32c-7.9 0-23.8 7-36.25 14.7-.95.6-1.84 1.1-2.75 1.7V311h38.3l.5-1.3.5 1.3h127.4l.3-.7.3.7h127.4l.5-1.3.5 1.3H423v-61.6c-.9-.5-1.8-1.1-2.8-1.7C407.8 240 391.9 233 384 233c-7.9 0-16.4 6-26.4 14S336 265 320 265s-27.6-10-37.6-18-18.5-14-26.4-14c-7.9 0-16.4 6-26.4 14S208 265 192 265s-27.6-10-37.6-18-18.5-14-26.4-14zm-87 96v6.7c.02.5.95 18.4 5.12 36.7 2.12 9.3 5.12 18.5 8.74 24.9 3.62 6.5 7.2 9.3 10.46 9.8 4.6.7 10.17-1.7 16.71-8 6.54-6.3 13.19-15.8 18.87-25.7 11.2-19.7 18.6-40.4 18.6-40.4l1.4-4H41zm94 0l1.4 3.8s7.3 19.5 18.6 38.6c5.6 9.6 12.2 19.1 18.9 25.7 6.7 6.6 13.1 9.9 18.1 9.9 5 0 11.4-3.3 18.1-9.9 6.7-6.6 13.3-16.1 18.9-25.7 11.3-19.1 18.6-38.6 18.6-38.6l1.4-3.8H135zm128 0l1.4 3.8s7.3 19.5 18.6 38.6c5.6 9.6 12.2 19.1 18.9 25.7 6.7 6.6 13.1 9.9 18.1 9.9 5 0 11.4-3.3 18.1-9.9 6.7-6.6 13.3-16.1 18.9-25.7 11.3-19.1 18.6-38.6 18.6-38.6l1.4-3.8H263zm128.1 0l1.4 4s7.4 20.7 18.6 40.4c5.7 9.9 12.3 19.4 18.9 25.7 6.5 6.3 12.1 8.7 16.7 8 3.2-.5 6.8-3.3 10.4-9.8 3.7-6.4 6.7-15.6 8.8-24.9 4.2-18.5 5.1-36.8 5.1-36.8V329h-79.9zM256 358.5c-3.1 6.7-6.8 14.2-11.5 22.1-6.1 10.4-13.3 20.9-21.8 29.3-8.5 8.4-18.7 15.1-30.7 15.1s-22.2-6.7-30.7-15.1c-8.5-8.4-15.7-18.9-21.8-29.3-4.6-7.7-8.2-15-11.3-21.6-3.2 7.1-7 15.1-11.7 23.3-6.1 10.8-13.4 21.5-22.02 29.8s-19.5 14.6-31.8 12.8c-9.7-1.4-16.7-8-21.68-15.8V487h430v-77.9c-4.9 7.8-11.9 14.4-21.7 15.8-12.3 1.8-23.2-4.5-31.8-12.8-8.6-8.3-15.9-19-22-29.8-4.7-8.2-8.5-16.2-11.7-23.3-3.1 6.6-6.7 13.9-11.3 21.6-6.1 10.4-13.3 20.9-21.8 29.3-8.5 8.4-18.7 15.1-30.7 15.1s-22.2-6.7-30.7-15.1c-8.5-8.4-15.7-18.9-21.8-29.3-4.7-7.9-8.4-15.4-11.5-22.1z"]};
+const ITEMS = {
+  beans:{name:'Çekirdek', color:'#6b4a35', tier:1, makes:'espresso'},
+  espresso:{name:'Espresso', color:'#4a2f22', tier:2, from:'beans', makes:'pot'},
+  pot:{name:'Demlik', color:'#2e1c14', tier:3, from:'espresso'},
+  wheat:{name:'Buğday', color:'#d39a2c', tier:1, makes:'cookie'},
+  cookie:{name:'Kurabiye', color:'#b8772e', tier:2, from:'wheat', makes:'croissant'},
+  croissant:{name:'Kruvasan', color:'#8f5220', tier:3, from:'cookie'},
+  milk:{name:'Süt', color:'#4a8fc9', tier:1, makes:'scoop'},
+  scoop:{name:'Dondurma', color:'#3f9e9a', tier:2, from:'milk', makes:'cone'},
+  cone:{name:'Külah', color:'#2c6f86', tier:3, from:'scoop'},
+  cherry:{name:'Kiraz', color:'#d23b55', tier:1, makes:'cupcake'},
+  cupcake:{name:'Kek', color:'#c2517f', tier:2, from:'cherry', makes:'cake'},
+  cake:{name:'Pasta', color:'#8e2f5e', tier:3, from:'cupcake'}
+};
+/* ---- Level config: grid size, moves, spawnable base items, noise and box queues per column ---- */
+const LEVELS = [
+ {
+  "name": "Açılış",
+  "rows": 6,
+  "cols": 6,
+  "moves": 48,
+  "items": [
+   "beans",
+   "wheat",
+   "milk"
+  ],
+  "noise": 1.0,
+  "columns": [
+   [
+    "beans",
+    "espresso",
+    "wheat"
+   ],
+   [
+    "wheat",
+    "beans",
+    "milk"
+   ],
+   [
+    "milk",
+    "cookie",
+    "beans"
+   ]
+  ]
+ },
+ {
+  "name": "İlk demlik",
+  "rows": 7,
+  "cols": 6,
+  "moves": 73,
+  "items": [
+   "beans",
+   "wheat",
+   "milk"
+  ],
+  "noise": 1.0,
+  "columns": [
+   [
+    "espresso",
+    "beans",
+    "pot"
+   ],
+   [
+    "wheat",
+    "espresso",
+    "milk"
+   ],
+   [
+    "beans",
+    "cookie",
+    "espresso"
+   ]
+  ]
+ },
+ {
+  "name": "Fırın sabahı",
+  "rows": 7,
+  "cols": 6,
+  "moves": 76,
+  "items": [
+   "beans",
+   "wheat",
+   "milk"
+  ],
+  "noise": 1.1,
+  "columns": [
+   [
+    "cookie",
+    "wheat",
+    "croissant"
+   ],
+   [
+    "espresso",
+    "milk",
+    "cookie"
+   ],
+   [
+    "beans",
+    "scoop",
+    "espresso"
+   ]
+  ]
+ },
+ {
+  "name": "Dondurma",
+  "rows": 7,
+  "cols": 7,
+  "moves": 94,
+  "items": [
+   "beans",
+   "wheat",
+   "milk"
+  ],
+  "noise": 1.2,
+  "columns": [
+   [
+    "scoop",
+    "cone",
+    "espresso"
+   ],
+   [
+    "cookie",
+    "beans",
+    "scoop",
+    "wheat"
+   ],
+   [
+    "pot",
+    "milk",
+    "cookie"
+   ]
+  ]
+ },
+ {
+  "name": "Yoğun saat",
+  "rows": 7,
+  "cols": 7,
+  "moves": 123,
+  "items": [
+   "beans",
+   "wheat",
+   "milk"
+  ],
+  "noise": 1.5,
+  "columns": [
+   [
+    "espresso",
+    "cookie",
+    "scoop",
+    "beans",
+    "pot"
+   ],
+   [
+    "wheat",
+    "milk",
+    "espresso",
+    "croissant"
+   ],
+   [
+    "scoop",
+    "beans",
+    "cookie",
+    "cone"
+   ]
+  ]
+ },
+ {
+  "name": "Kiraz mevsimi",
+  "rows": 7,
+  "cols": 7,
+  "moves": 76,
+  "items": [
+   "beans",
+   "wheat",
+   "milk",
+   "cherry"
+  ],
+  "noise": 1.2,
+  "columns": [
+   [
+    "cherry",
+    "cupcake",
+    "espresso"
+   ],
+   [
+    "cupcake",
+    "wheat",
+    "cake"
+   ],
+   [
+    "milk",
+    "scoop",
+    "cherry",
+    "cookie"
+   ]
+  ]
+ },
+ {
+  "name": "Tatlı vitrini",
+  "rows": 7,
+  "cols": 7,
+  "moves": 122,
+  "items": [
+   "beans",
+   "wheat",
+   "milk",
+   "cherry"
+  ],
+  "noise": 1.3,
+  "columns": [
+   [
+    "cake",
+    "cupcake",
+    "cookie"
+   ],
+   [
+    "scoop",
+    "cherry",
+    "cone",
+    "espresso"
+   ],
+   [
+    "croissant",
+    "cupcake",
+    "milk",
+    "pot"
+   ]
+  ]
+ },
+ {
+  "name": "Hafta sonu",
+  "rows": 7,
+  "cols": 7,
+  "moves": 131,
+  "items": [
+   "beans",
+   "wheat",
+   "milk",
+   "cherry"
+  ],
+  "noise": 1.5,
+  "columns": [
+   [
+    "pot",
+    "espresso",
+    "cupcake",
+    "scoop"
+   ],
+   [
+    "cherry",
+    "cake",
+    "cookie",
+    "beans"
+   ],
+   [
+    "cone",
+    "milk",
+    "croissant",
+    "cupcake",
+    "espresso"
+   ]
+  ]
+ },
+ {
+  "name": "Kuyruk kapıda",
+  "rows": 7,
+  "cols": 7,
+  "moves": 172,
+  "items": [
+   "beans",
+   "wheat",
+   "milk",
+   "cherry"
+  ],
+  "noise": 1.7,
+  "columns": [
+   [
+    "cake",
+    "scoop",
+    "pot",
+    "cookie",
+    "cupcake"
+   ],
+   [
+    "croissant",
+    "cupcake",
+    "espresso",
+    "cone",
+    "cherry"
+   ],
+   [
+    "pot",
+    "cookie",
+    "cake",
+    "scoop",
+    "espresso"
+   ]
+  ]
+ },
+ {
+  "name": "Büyük açılış",
+  "rows": 7,
+  "cols": 7,
+  "moves": 234,
+  "items": [
+   "beans",
+   "wheat",
+   "milk",
+   "cherry"
+  ],
+  "noise": 1.8,
+  "columns": [
+   [
+    "pot",
+    "cake",
+    "cone",
+    "espresso",
+    "cupcake",
+    "croissant"
+   ],
+   [
+    "cupcake",
+    "croissant",
+    "scoop",
+    "pot",
+    "cookie",
+    "cake"
+   ],
+   [
+    "cone",
+    "espresso",
+    "cake",
+    "cupcake",
+    "pot",
+    "scoop"
+   ]
+  ]
+ }
+];
+const BOX_NEED = 3, SLOT_MAX = 5, BOOST_MAX = 5, STOCK_KEY='kahve-stok-v1';
+const TIER2 = Object.keys(ITEMS).filter(k=>ITEMS[k].tier>=2);
+let STOCK = {}; try{ STOCK = JSON.parse(localStorage.getItem(STOCK_KEY)||'{}')||{}; }catch(e){ STOCK={}; }
+let PROG={unlocked:0,stars:{}}; try{ PROG=Object.assign(PROG, JSON.parse(localStorage.getItem('kahve-prog-v1')||'{}')); }catch(e){}
+function saveProg(){ try{ localStorage.setItem('kahve-prog-v1', JSON.stringify(PROG)); }catch(e){} }
+function saveStock(){ try{ localStorage.setItem(STOCK_KEY, JSON.stringify(STOCK)); }catch(e){} }
+function stockTotal(){ return TIER2.reduce((a,k)=>a+(STOCK[k]||0),0); }
+function renderPantry(){ document.getElementById('pantryIcon').innerHTML=faceHTML('espresso',false); document.getElementById('pantryCount').textContent=stockTotal(); }
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const STAR_PATH = 'M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z';
+
+function iconSVG(item, withStar){
+  const ds = PATHS[item].map(d=>`<path d="${d}"/>`).join('');
+  return `<svg viewBox="0 0 512 512" aria-hidden="true">${ds}</svg>` +
+    (withStar && ITEMS[item].tier>=2 ? `<svg class="star" viewBox="0 0 24 24"><path d="${STAR_PATH}"/></svg>` + (ITEMS[item].tier===3?`<svg class="star s2" viewBox="0 0 24 24"><path d="${STAR_PATH}"/></svg>`:'') : '');
+}
+function faceHTML(item, star=true){ return `<div class="face" style="--c:${ITEMS[item].color}">${iconSVG(item, star)}</div>`; }
+
+let S, uid=0, levelIndex=0, cell=56;
+const boardEl = document.getElementById('board');
+
+function startLevel(i){
+  levelIndex = i; const L = LEVELS[i];
+  if(S) S.dead=true; clearTimeout(stepTimer); stepTimer=null; document.querySelectorAll('.fly').forEach(f=>f.remove());
+  S = { L, rows:L.rows, cols:L.cols, moves:L.moves, grid:[], tiles:new Map(),
+        queues:L.columns.map(q=>q.map(w=>({want:w, filled:[], t:[]}))), slots:[], slotT:[], closing:[null,null,null], busy:false, over:false };
+  document.getElementById('lvlTitle').innerHTML = `Bölüm ${i+1}<small>${L.name}</small>`;
+  boardEl.innerHTML='';
+  layout();
+  for(let r=0;r<S.rows;r++){ S.grid.push([]); for(let c=0;c<S.cols;c++){
+    const bg=document.createElement('div'); bg.className='bgcell'; bg.dataset.r=r; bg.dataset.c=c; boardEl.appendChild(bg);
+    S.grid[r].push(null);
+  }}
+  for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++){
+    S.grid[r][c] = makeTile(pickSpawn(r,c), r, c);
+  }
+  positionAll(); renderSlots(); renderBoxes(); updateHUD(); renderPantry(); closeOverlay();
+  if(!firstRun) showPrep();
+}
+let firstRun=true, PICK={};
+function showPrep(){
+  if(stockTotal()===0) return;
+  PICK={}; S.busy=true; drawPrep();
+}
+function drawPrep(){
+  const used=Object.values(PICK).reduce((a,b)=>a+b,0);
+  const rows=TIER2.filter(k=>STOCK[k]).map(k=>`<div class="sitem"><span class="ic">${faceHTML(k)}</span>
+    <div class="meta"><b>${ITEMS[k].name}</b>Stok ${STOCK[k]}</div>
+    <div class="step"><button data-act="minus" data-k="${k}" ${!PICK[k]?'disabled':''} aria-label="Azalt">−</button><span>${PICK[k]||0}</span>
+    <button data-act="plus" data-k="${k}" ${(PICK[k]||0)>=STOCK[k]||used>=BOOST_MAX?'disabled':''} aria-label="Artır">+</button></div></div>`).join('');
+  showOverlay(`<h2>Bölüm ${levelIndex+1}</h2><p style="margin-bottom:0">Kilerinden tahtaya ürün ekle. En fazla ${BOOST_MAX} tane seçebilirsin.</p>
+    <div class="stock">${rows}</div>
+    <button class="btn" data-act="boost">${used?`${used} ürünle başla`:'Eklemeden başla'}</button>`);
+}
+async function applyBoost(){
+  closeOverlay();
+  const picks=[]; Object.entries(PICK).forEach(([k,n])=>{ for(let i=0;i<n;i++) picks.push(k); STOCK[k]-=n; });
+  saveStock(); renderPantry();
+  const cells=[]; for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++) cells.push([r,c]);
+  cells.sort(()=>Math.random()-.5);
+  const from=document.getElementById('pantryIcon').getBoundingClientRect();
+  await Promise.all(picks.map((k,i)=>(async()=>{
+    const [r,c]=cells[i], t=S.grid[r][c]; await sleep(i*150);
+    await fly(k, from, t.el.querySelector('.face'));
+    SFX.boost(i); setTileItem(t,k); t.el.classList.remove('boost'); void t.el.offsetWidth; t.el.classList.add('boost');
+  })()));
+  S.busy=false;
+}
+
+function layout(){
+  const wrap=document.querySelector('.tray-wrap');
+  const w = Math.min(wrap.clientWidth - 16, 436), h = wrap.clientHeight - 16;
+  cell = Math.max(24, Math.floor(Math.min(w / S.cols, h / S.rows)));
+  boardEl.style.width = cell*S.cols+'px'; boardEl.style.height = cell*S.rows+'px';
+  boardEl.querySelectorAll('.bgcell').forEach(b=>{
+    b.style.left=(+b.dataset.c*cell+3)+'px'; b.style.top=(+b.dataset.r*cell+3)+'px';
+    b.style.width=b.style.height=(cell-6)+'px';
+  });
+  positionAll();
+}
+window.addEventListener('resize', ()=>S && layout());
+new ResizeObserver(()=>S && layout()).observe(document.querySelector('.tray-wrap'));
+
+function makeTile(item, r, c){
+  const t = {id:++uid, item, el:document.createElement('div')};
+  t.el.className='tile'; t.el.style.width=t.el.style.height=cell+'px';
+  setTileItem(t, item); boardEl.appendChild(t.el); S.tiles.set(t.id,t);
+  place(t, r, c); return t;
+}
+function setTileItem(t, item){ t.item=item; t.el.classList.toggle('t2', ITEMS[item].tier>=2); t.el.classList.toggle('t3', ITEMS[item].tier===3); t.el.innerHTML = faceHTML(item); }
+function place(t, r, c){ t.el.style.width=t.el.style.height=cell+'px'; t.el.style.transform=`translate(${c*cell}px,${r*cell}px)`; }
+function positionAll(){ if(!S.grid.length) return; for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++){ const t=S.grid[r]?.[c]; if(t) place(t,r,c); } }
+
+/* ---- spawn: weighted by what boxes need, never creating a merge on its own ---- */
+function demandWeights(){
+  const w = {}; S.L.items.forEach(it=> w[it] = S.L.noise);
+  S.queues.forEach(q=> q.forEach((b,idx)=>{
+    const k = idx===0 ? 3 : 1; const it = ITEMS[b.want];
+    if(it.tier===3){ const base=ITEMS[it.from].from; w[base]=(w[base]||0)+5*k; } else if(it.tier===2) w[it.from] = (w[it.from]||0) + 2.2*k; else w[b.want] = (w[b.want]||0) + k;
+  }));
+  return w;
+}
+function clusterSizeIf(r,c,item){
+  const seen=new Set([r+','+c]), st=[[r,c]]; let n=0;
+  while(st.length){ const [y,x]=st.pop(); n++;
+    for(const [dy,dx] of [[1,0],[-1,0],[0,1],[0,-1]]){ const ny=y+dy,nx=x+dx, k=ny+','+nx;
+      if(ny<0||nx<0||ny>=S.rows||nx>=S.cols||seen.has(k)) continue;
+      const t=S.grid[ny][nx]; if(t && t.item===item){ seen.add(k); st.push([ny,nx]); } } }
+  return n;
+}
+function pickSpawn(r,c){
+  const w = demandWeights(); let pool = Object.entries(w).filter(([it])=>S.L.items.includes(it));
+  for(let tries=0; tries<12 && pool.length; tries++){
+    const total = pool.reduce((a,[,v])=>a+v,0); let x=Math.random()*total, pick=pool[0][0];
+    for(const [it,v] of pool){ if((x-=v)<=0){ pick=it; break; } }
+    if(clusterSizeIf(r,c,pick) < 3) return pick;
+    pool = pool.filter(([it])=>it!==pick);
+  }
+  return S.L.items.find(it=>clusterSizeIf(r,c,it)<3) || S.L.items[0];
+}
+
+/* ---- merges ---- */
+function findClusters(){
+  const seen=new Set(), out=[];
+  for(let r=0;r<S.rows;r++) for(let c=0;c<S.cols;c++){
+    const t=S.grid[r][c]; if(!t || !ITEMS[t.item].makes || seen.has(r+','+c)) continue;
+    const group=[], st=[[r,c]]; seen.add(r+','+c);
+    while(st.length){ const [y,x]=st.pop(); group.push([y,x]);
+      for(const [dy,dx] of [[1,0],[-1,0],[0,1],[0,-1]]){ const ny=y+dy,nx=x+dx,k=ny+','+nx;
+        if(ny<0||nx<0||ny>=S.rows||nx>=S.cols||seen.has(k)) continue;
+        const o=S.grid[ny][nx]; if(o && o.item===t.item){ seen.add(k); st.push([ny,nx]); } } }
+    if(group.length>=3) out.push(group);
+  }
+  return out;
+}
+/* ---- non-blocking resolve: game state updates instantly, animations just follow ---- */
+
+/* ---- sound: synthesized with Web Audio, no files needed ---- */
+const SFX=(()=>{
+  let ctx=null, master=null, on=true;
+  try{ on = localStorage.getItem('pantry-sound')!=='0'; }catch(e){}
+  function ensure(){
+    if(!ctx){ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+      ctx=new AC(); master=ctx.createGain(); master.gain.value=.55;
+      const comp=ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination); }
+    if(ctx.state==='suspended') ctx.resume();
+    return true;
+  }
+  function tone({f=440,f2=0,type='sine',t=0,dur=.15,vol=.3,attack=.006}){
+    const n=ctx.currentTime+t, o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type; o.frequency.setValueAtTime(f,n); if(f2) o.frequency.exponentialRampToValueAtTime(f2,n+dur);
+    g.gain.setValueAtTime(0.0001,n); g.gain.linearRampToValueAtTime(vol,n+attack); g.gain.exponentialRampToValueAtTime(.0001,n+dur);
+    o.connect(g); g.connect(master); o.start(n); o.stop(n+dur+.03);
+  }
+  let nbuf=null;
+  function noise({t=0,dur=.08,vol=.2,freq=1200,q=1,ftype='bandpass'}){
+    if(!nbuf){ nbuf=ctx.createBuffer(1,ctx.sampleRate*.5,ctx.sampleRate); const d=nbuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
+    const n=ctx.currentTime+t, src=ctx.createBufferSource(), fl=ctx.createBiquadFilter(), g=ctx.createGain();
+    src.buffer=nbuf; fl.type=ftype; fl.frequency.value=freq; fl.Q.value=q;
+    g.gain.setValueAtTime(vol,n); g.gain.exponentialRampToValueAtTime(.0001,n+dur);
+    src.connect(fl); fl.connect(g); g.connect(master); src.start(n); src.stop(n+dur+.02);
+  }
+  const semi=(f,k)=>f*Math.pow(2,k/12);
+  const S={
+    ui(){ tone({f:700,f2:900,type:'triangle',dur:.06,vol:.12}); },
+    pick(){ tone({f:520,f2:820,type:'triangle',dur:.08,vol:.16}); },
+    swap(){ noise({dur:.09,vol:.14,freq:2400,q:.8}); tone({f:380,f2:520,type:'sine',dur:.07,vol:.1}); },
+    deliver(i){ tone({f:190,f2:110,dur:.09,vol:.35}); noise({dur:.04,vol:.12,freq:900,q:2});
+      tone({f:semi(660,[0,4,7][i]||0),type:'triangle',t:.02,dur:.16,vol:.14}); },
+    slot(){ tone({f:210,f2:85,dur:.18,vol:.4}); noise({dur:.07,vol:.18,freq:350,ftype:'lowpass'}); },
+    warn(){ tone({f:330,type:'square',dur:.07,vol:.05}); tone({f:330,type:'square',t:.12,dur:.07,vol:.05}); },
+    merge(chain){ const b=semi(523,Math.min(chain,6)*2);
+      [0,4,7].forEach((k,i)=>tone({f:semi(b,k),type:'triangle',t:i*.045,dur:.26,vol:.15}));
+      tone({f:semi(b,24),t:.13,dur:.3,vol:.06}); },
+    boxDone(){ noise({dur:.1,vol:.25,freq:280,ftype:'lowpass'}); tone({f:160,f2:80,dur:.14,vol:.35});
+      tone({f:1318,t:.09,dur:.18,vol:.08}); tone({f:1760,t:.15,dur:.22,vol:.07}); },
+    collect(i){ tone({f:semi(880,Math.min(i,12)),type:'sine',dur:.14,vol:.18}); tone({f:semi(1760,Math.min(i,12)),t:.03,dur:.1,vol:.05}); },
+    boost(i){ tone({f:semi(660,i*2),type:'triangle',dur:.16,vol:.16}); },
+    win(){ [0,4,7,12,16].forEach((k,i)=>tone({f:semi(523,k),type:'triangle',t:i*.09,dur:.35,vol:.16}));
+      tone({f:semi(523,24),t:.5,dur:.6,vol:.08}); },
+    lose(){ [7,4,0,-5].forEach((k,i)=>tone({f:semi(392,k),type:'sine',t:i*.16,dur:.35,vol:.18})); }
+  };
+  const api={ get on(){return on;},
+    toggle(){ on=!on; try{ localStorage.setItem('pantry-sound',on?'1':'0'); }catch(e){} if(on&&ensure()) S.ui(); return on; },
+    unlock(){ if(on) ensure(); } };
+  Object.keys(S).forEach(k=> api[k]=(...a)=>{ if(!on||!ensure()) return; try{ S[k](...a); }catch(e){} });
+  return api;
+})();
+let mergeChain=0;
+let stepTimer=null, focusCells=[];
+function scheduleStep(delay){ if(stepTimer) return; stepTimer=setTimeout(()=>{ stepTimer=null; mergeStep(); }, delay); }
+function mergeStep(){
+  if(!S || S.dead) return;
+  const clusters=findClusters();
+  if(!clusters.length){ mergeChain=0; drainSlots(); checkEnd(); return; }
+  const chainNow=mergeChain++; setTimeout(()=>SFX.merge(chainNow),140);
+  for(const g of clusters){
+    const target = g.find(([r,c])=>focusCells.some(([fr,fc])=>fr===r&&fc===c)) || g.slice().sort((a,b)=>b[0]-a[0]||a[1]-b[1])[0];
+    const [tr,tc]=target, keep=S.grid[tr][tc], made=ITEMS[keep.item].makes;
+    for(const [r,c] of g){ if(r===tr&&c===tc) continue; const t=S.grid[r][c];
+      S.grid[r][c]=null; t.el.style.zIndex=1; place(t,tr,tc);
+      setTimeout(()=>{ t.el.remove(); S.tiles.delete(t.id); },150); }
+    keep.item=made;
+    setTimeout(()=>{ if(keep.item!==made) return; keep.el.classList.toggle('t2',true); keep.el.classList.toggle('t3',ITEMS[made].tier===3); keep.el.innerHTML=faceHTML(made);
+      keep.el.classList.remove('pop'); void keep.el.offsetWidth; keep.el.classList.add('pop'); },140);
+  }
+  focusCells = gravitySpawn();
+  scheduleStep(230);
+}
+function gravitySpawn(){
+  const moved=[], spawned=[];
+  for(let c=0;c<S.cols;c++){
+    let write=S.rows-1;
+    for(let r=S.rows-1;r>=0;r--){ const t=S.grid[r][c]; if(!t) continue;
+      if(write!==r){ S.grid[write][c]=t; S.grid[r][c]=null; moved.push([write,c]); t.el.classList.add('fall'); place(t,write,c); }
+      write--; }
+  }
+  for(let c=0;c<S.cols;c++){
+    let empties=0; for(let r=0;r<S.rows;r++) if(!S.grid[r][c]) empties++;
+    for(let r=empties-1;r>=0;r--){ const t=makeTile(pickSpawn(r,c), r-empties, c); t.el.classList.add('fall'); S.grid[r][c]=t; spawned.push([t,r,c]); }
+  }
+  if(spawned.length){ void boardEl.offsetWidth; spawned.forEach(([t,r,c])=>place(t,r,c)); }
+  const els=[...moved.map(([r,c])=>S.grid[r][c]), ...spawned.map(x=>x[0])];
+  setTimeout(()=>els.forEach(t=>t&&t.el.classList.remove('fall')),300);
+  return moved;
+}
+
+/* ---- boxes & slots ---- */
+const ARRIVE_MS=360;
+function arriveAttr(t){ const e=performance.now()-(t||0); return e<ARRIVE_MS ? ` class="arrive" style="animation-delay:-${e|0}ms"` : ''; }
+function renderBoxes(enterCol=-1){
+  const el=document.getElementById('boxes'); el.innerHTML='';
+  S.queues.forEach((q,ci)=>{
+    const col=document.createElement('div'); col.className='col'; col.dataset.col=ci;
+    const closing=S.closing[ci];
+    const b = closing ? closing.box : q[0];
+    if(!b){ col.innerHTML='<div class="empty-col">Tamamlandı</div>'; el.appendChild(col); return; }
+    const it=ITEMS[b.want];
+    const recipe = it.tier>=2 ? `<div class="recipe">3 × <i>${faceHTML(it.from,false)}</i></div>` : `<div class="recipe">taze</div>`;
+    let pips=''; for(let i=0;i<BOX_NEED;i++) pips+=`<div class="pip">${b.filled[i]?`<div${arriveAttr(b.t[i])}>${faceHTML(b.filled[i])}</div>`:''}</div>`;
+    const rest = closing ? q : q.slice(1), shown=rest.slice(0,3).map(x=>`<div class="q">${faceHTML(x.want)}</div>`).join('');
+    col.innerHTML=`<div class="crate${ci===enterCol?' enter':''}${closing&&closing.done?' done':''}"><div class="crate-head"><div class="icon">${faceHTML(b.want)}</div>${recipe}<div class="name">${it.name}</div></div><div class="pips">${pips}</div></div>
+      <div class="queue">${shown}${rest.length>3?`<span class="more">+${rest.length-3}</span>`:''}</div>`;
+    el.appendChild(col);
+  });
+}
+function renderSlots(){
+  const el=document.getElementById('slots'); el.innerHTML='';
+  for(let i=0;i<SLOT_MAX;i++){ const s=document.createElement('div'); s.className='slot';
+    if(S.slots[i]) s.innerHTML=`<div${arriveAttr(S.slotT[i])}>${faceHTML(S.slots[i])}</div>`; el.appendChild(s); }
+}
+function activeBoxFor(item){
+  let best=-1;
+  S.queues.forEach((q,ci)=>{ const b=q[0]; if(b && b.want===item && b.filled.length<BOX_NEED){
+    if(best<0 || b.filled.length > S.queues[best][0].filled.length) best=ci; }});
+  return best;
+}
+async function fly(item, fromRect, toEl){
+  if(!toEl) return; const to=toEl.getBoundingClientRect(), f=document.createElement('div');
+  f.className='fly'+(ITEMS[item].tier>=2?' t2':'')+(ITEMS[item].tier===3?' t3':''); f.style.setProperty('--c',ITEMS[item].color); f.innerHTML=iconSVG(item,true);
+  Object.assign(f.style,{left:fromRect.left+'px',top:fromRect.top+'px',width:fromRect.width+'px',height:fromRect.height+'px',transformOrigin:'0 0'});
+  document.body.appendChild(f);
+  const dx=to.left-fromRect.left, dy=to.top-fromRect.top, sc=to.width/fromRect.width;
+  const a=f.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${dx*0.5}px,${dy*0.5-40}px) scale(${(1+sc)/2*1.1})`,offset:.5},{transform:`translate(${dx}px,${dy}px) scale(${sc})`}],
+    {duration:ARRIVE_MS,easing:'cubic-bezier(.4,0,.3,1)'});
+  await a.finished.catch(()=>{}); f.remove();
+}
+function deliverToBox(ci, item, fromRect){
+  const b=S.queues[ci][0], idx=b.filled.length;
+  b.filled.push(item); b.t[idx]=performance.now();
+  setTimeout(()=>SFX.deliver(idx), ARRIVE_MS-20);
+  if(b.filled.length>=BOX_NEED){
+    setTimeout(()=>SFX.boxDone(), ARRIVE_MS+90);
+    S.queues[ci].shift();
+    const token={box:b, done:false}; S.closing[ci]=token;
+    setTimeout(()=>{ if(S.closing[ci]===token){ token.done=true; renderBoxes(); } }, ARRIVE_MS+80);
+    setTimeout(()=>{ if(S.closing[ci]===token){ S.closing[ci]=null; renderBoxes(ci); } }, ARRIVE_MS+330);
+  }
+  renderBoxes();
+  const pip=document.querySelector(`.col[data-col="${ci}"] .pip:nth-child(${idx+1})`) || document.querySelector(`.col[data-col="${ci}"]`);
+  fly(item, fromRect, pip);
+}
+function drainSlots(){
+  let i=0;
+  while(i<S.slots.length){
+    const ci=activeBoxFor(S.slots[i]);
+    if(ci<0){ i++; continue; }
+    const rect=document.querySelectorAll('#slots .slot')[i].getBoundingClientRect(), item=S.slots[i];
+    S.slots.splice(i,1); S.slotT.splice(i,1); renderSlots();
+    deliverToBox(ci,item,rect); i=0;
+  }
+}
+
+/* ---- player actions (never wait for animations) ---- */
+function tap(r,c){
+  if(S.busy||S.over||S.moves<=0||S.slots.length>=SLOT_MAX) return; const t=S.grid[r][c]; if(!t) return;
+  S.moves--; updateHUD(); SFX.pick();
+  const rect=t.el.querySelector('.face').getBoundingClientRect();
+  S.grid[r][c]=null; t.el.remove(); S.tiles.delete(t.id);
+  const ci=activeBoxFor(t.item);
+  if(ci>=0) deliverToBox(ci,t.item,rect);
+  else {
+    const i=S.slots.length; S.slots.push(t.item); S.slotT[i]=performance.now(); renderSlots();
+    fly(t.item,rect,document.querySelectorAll('#slots .slot')[i]);
+    setTimeout(()=>{ SFX.slot(); if(S.slots.length>=SLOT_MAX-1) SFX.warn(); }, ARRIVE_MS-20);
+    if(S.slots.length>=SLOT_MAX-1){ const sl=document.getElementById('slots'); sl.classList.remove('warn'); void sl.offsetWidth; sl.classList.add('warn'); }
+  }
+  drainSlots();
+  focusCells = gravitySpawn();
+  scheduleStep(200);
+  checkEnd();
+}
+function swap(r1,c1,r2,c2){
+  if(S.busy||S.over||S.moves<=0) return; if(r2<0||c2<0||r2>=S.rows||c2>=S.cols) return;
+  const a=S.grid[r1][c1], b=S.grid[r2][c2]; if(!a||!b||a.item===b.item) return;
+  S.moves--; updateHUD(); SFX.swap(); mergeChain=0;
+  S.grid[r1][c1]=b; S.grid[r2][c2]=a; place(a,r2,c2); place(b,r1,c1);
+  focusCells=[[r2,c2],[r1,c1]];
+  scheduleStep(170);
+  checkEnd();
+}
+
+let drag=null;
+boardEl.addEventListener('pointerdown',e=>{
+  const bx=boardEl.getBoundingClientRect(), c=Math.floor((e.clientX-bx.left)/cell), r=Math.floor((e.clientY-bx.top)/cell);
+  if(r<0||c<0||r>=S.rows||c>=S.cols) return;
+  drag={r,c,x:e.clientX,y:e.clientY,done:false}; boardEl.setPointerCapture(e.pointerId);
+  S.grid[r][c]?.el.classList.add('sel');
+});
+boardEl.addEventListener('pointermove',e=>{
+  if(!drag||drag.done) return; const dx=e.clientX-drag.x, dy=e.clientY-drag.y, th=cell*0.35;
+  if(Math.abs(dx)<th && Math.abs(dy)<th) return;
+  drag.done=true; clearSel();
+  if(Math.abs(dx)>Math.abs(dy)) swap(drag.r,drag.c,drag.r,drag.c+Math.sign(dx)); else swap(drag.r,drag.c,drag.r+Math.sign(dy),drag.c);
+});
+boardEl.addEventListener('pointerup',()=>{ if(drag&&!drag.done) tap(drag.r,drag.c); clearSel(); drag=null; });
+boardEl.addEventListener('pointercancel',()=>{ clearSel(); drag=null; });
+function clearSel(){ S.tiles.forEach(t=>t.el.classList.remove('sel')); }
+
+function updateHUD(){ const m=document.getElementById('moves'); m.querySelector('b').textContent=S.moves; m.classList.toggle('low',S.moves<=5); }
+
+/* ---- end states ---- */
+function checkEnd(){
+  if(S.over) return;
+  if(S.queues.every(q=>!q.length)){
+    S.over=true; collectAndWin(); return;
+  }
+  if(S.slots.length>=SLOT_MAX){ S.over=true; setTimeout(()=>showLose('slots'), 500); }
+  else if(S.moves<=0 && !stepTimer){ S.over=true; setTimeout(()=>showLose('moves'), 450); }
+}
+async function collectAndWin(){
+    S.busy=true; const gained={};
+    while(stepTimer) await sleep(120);
+    await sleep(250);
+    const btn=document.getElementById('pantryBtn');
+    const list=[]; for(let r=S.rows-1;r>=0;r--) for(let c=0;c<S.cols;c++){ const t=S.grid[r][c]; if(t && ITEMS[t.item].tier>=2) list.push(t); }
+    await sleep(350);
+    await Promise.all(list.map((t,i)=>(async()=>{
+      await sleep(i*140);
+      const rect=t.el.querySelector('.face').getBoundingClientRect(); t.el.style.opacity=0;
+      await fly(t.item, rect, document.getElementById('pantryIcon'));
+      SFX.collect(i);
+      STOCK[t.item]=(STOCK[t.item]||0)+1; gained[t.item]=(gained[t.item]||0)+1; renderPantry();
+      btn.classList.remove('bump'); void btn.offsetWidth; btn.classList.add('bump');
+    })()));
+    saveStock(); await sleep(300);
+    const gainHTML = Object.keys(gained).length
+      ? `<p style="margin-bottom:0">Kilerine eklendi</p><div class="gain">${Object.entries(gained).map(([k,n])=>`<div><span class="ic">${faceHTML(k,false)}</span>×${n}</div>`).join('')}</div>`
+      : `<p>Tahtada kalan üst ürünler bölüm sonunda kilerine gider.</p>`;
+    { const ratio=S.moves/S.L.moves, stars=ratio>=.3?3:ratio>=.12?2:1;
+    const starSVG=i=>`<svg viewBox="0 0 24 24" class="${i<stars?'on':''}"><path d="${STAR_PATH}"/></svg>`;
+    PROG.stars[levelIndex]=Math.max(PROG.stars[levelIndex]||0,stars); PROG.unlocked=Math.max(PROG.unlocked,Math.min(levelIndex+1,LEVELS.length-1)); saveProg();
+    const next = levelIndex<LEVELS.length-1;
+    SFX.win();
+    showOverlay(`<h2>Siparişler hazır</h2><div class="stars">${[0,1,2].map(starSVG).join('')}</div>
+      <p>${S.moves} hamle artırdın.</p>${gainHTML}
+      ${next?'<button class="btn" data-act="next">Sonraki bölüm</button>':'<p>Tüm bölümleri bitirdin.</p>'}
+      <button class="btn alt" data-act="retry">Bu bölümü tekrar oyna</button>`);
+    S.busy=false; }
+}
+function showLose(kind){
+  SFX.lose();
+  if(kind==='slots'){
+    showOverlay(`<h2>Raf taştı</h2><p>Bekleme rafına 5 ürün doldu. Yanlış kutuya giden ürünler rafta bekler, raf dolunca bölüm biter.</p><button class="btn" data-act="retry">Tekrar dene</button>`);
+  } else {
+    showOverlay(`<h2>Hamle bitti</h2><p>Kutuların ${S.queues.reduce((a,q)=>a+q.length,0)} tanesi hâlâ bekliyor. Birleştirmeleri daha erken planlamak hamle kazandırır.</p><button class="btn" data-act="retry">Tekrar dene</button>`);
+  }
+}
+const overlay=document.getElementById('overlay');
+function showOverlay(html){ document.getElementById('card').innerHTML=html; overlay.classList.add('show'); }
+function closeOverlay(){ overlay.classList.remove('show'); }
+overlay.addEventListener('click',e=>{
+  const act=e.target.closest('[data-act]')?.dataset.act; if(!act) return;
+  SFX.ui();
+  if(act==='help') showHelp();
+  if(act==='next') startLevel(levelIndex+1);
+  if(act==='retry') startLevel(levelIndex);
+  if(act==='close'){ closeOverlay(); }
+  if(act==='play'){ closeOverlay(); firstRun=false; if(stockTotal()) showPrep(); }
+  if(act==='plus'||act==='minus'){ const k=e.target.dataset.k; PICK[k]=Math.max(0,(PICK[k]||0)+(act==='plus'?1:-1)); drawPrep(); }
+  if(act==='boost'){ applyBoost(); }
+  if(act==='level'){ startLevel(+e.target.closest('[data-lv]').dataset.lv); }
+});
+document.getElementById('restartBtn').onclick=()=>startLevel(levelIndex);
+function showLevels(){
+  if(S.busy) return;
+  const cells=LEVELS.map((L,i)=>{ const st=PROG.stars[i]||0;
+    return `<button class="lv${i===levelIndex?' cur':''}" data-act="level" data-lv="${i}" ${i>PROG.unlocked?'disabled':''} aria-label="Bölüm ${i+1}">${i+1}<small>${[0,1,2].map(k=>`<svg viewBox="0 0 24 24" class="${k<st?'on':''}"><path d="${STAR_PATH}"/></svg>`).join('')}</small></button>`; }).join('');
+  showOverlay(`<h2>Bölümler</h2><div class="levels">${cells}</div><button class="btn" data-act="help">Nasıl oynanır</button><button class="btn alt" data-act="close">Kapat</button>`);
+}
+document.getElementById('lvlTitle').onclick=showLevels;
+const SPK_ON='<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/>', SPK_OFF='<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/>';
+function renderSound(){ document.getElementById('soundIcon').innerHTML = SFX.on?SPK_ON:SPK_OFF; document.getElementById('soundBtn').setAttribute('aria-pressed', SFX.on); }
+document.getElementById('soundBtn').onclick=()=>{ SFX.toggle(); renderSound(); };
+renderSound();
+window.addEventListener('pointerdown', ()=>SFX.unlock(), {once:true});
+document.getElementById('pantryBtn').onclick=()=>{ if(S.busy||S.over) return;
+  const rows=TIER2.map(k=>`<div class="sitem"><span class="ic">${faceHTML(k)}</span><div class="meta"><b>${ITEMS[k].name}</b>${STOCK[k]||0} adet</div></div>`).join('');
+  showOverlay(`<h2>Kilerim</h2><div class="stock">${rows}</div><p>Bölüm başlarken bu ürünleri tahtaya ekleyebilirsin.</p><button class="btn" data-act="close">Kapat</button>`); };
+function showHelp(first){
+  showOverlay(`<div class="logo"><span class="lj">${faceHTML("pot",false)}</span><h2>Pantry Jam<small style="display:block;font-size:.95rem;font-weight:600;opacity:.7">Kahve Dükkanı</small></h2></div><ul class="help">
+    <li><b>Dokun:</b> ürün, onu isteyen öndeki kutuya gider.</li>
+    <li><b>Sürükle:</b> yan yana iki ürünün yerini değiştirir.</li>
+    <li>3 veya daha fazla aynı ürün yan yana gelirse tek bir üst ürüne dönüşür: çekirdek espresso, buğday kurabiye, süt dondurma olur. 3 üst ürün de birleşip en değerli ürünü yapar: 3 espresso bir demlik olur.</li>
+    <li>İsteyen kutu yoksa ürün bekleme rafına iner. Raf 5'te dolar.</li>
+    <li>Bölüm sonunda tahtada kalan espresso, kurabiye, demlik gibi üst ürünler kilerine gider. Sonraki bölümlerin başında onları tahtaya ekleyebilirsin.</li>
+    <li>Bölümler ve bu ekran için sol üstteki bölüm adına dokun. Sesi sağ üstten açıp kapatabilirsin.</li>
+    <li>Her dokunuş ve yer değiştirme 1 hamle. Hamleler bitmeden tüm kutuları doldur.</li></ul>
+    <button class="btn" data-act="${first===true?'play':'close'}">${first===true?'Başla':'Devam et'}</button>`);
+}
+startLevel(Math.min(PROG.unlocked,LEVELS.length-1)); showHelp(true);
+</script>
+</body>
+</html>
